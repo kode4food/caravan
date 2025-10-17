@@ -1,11 +1,11 @@
 <h1 align="left">
   Caravan
-  <img src="docs/caravan-logo.png" align="right" alt="Caravan Logo" style="max-height: 100px" />
+  <img src="./docs/caravan-logo.png" align="right" alt="Caravan Logo" style="max-height: 100px" />
 </h1>
 
 ### Stream Processing and State Management for Go
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/kode4food/caravan?nocache=1)](https://goreportcard.com/report/github.com/kode4food/caravan) [![Build Status](https://app.travis-ci.com/kode4food/caravan.svg?branch=main)](https://app.travis-ci.com/kode4food/caravan?cache=1) [![Test Coverage](https://api.codeclimate.com/v1/badges/ee02654a373b899dc78d/test_coverage)](https://codeclimate.com/github/kode4food/caravan/test_coverage) [![Maintainability](https://api.codeclimate.com/v1/badges/ee02654a373b899dc78d/maintainability)](https://codeclimate.com/github/kode4food/caravan/maintainability) [![GitHub](https://img.shields.io/github/license/kode4food/caravan)](https://github.com/kode4food/caravan/blob/main/LICENSE.md)
+[![Go Report Card](https://goreportcard.com/badge/github.com/kode4food/caravan?nocache=1)](https://goreportcard.com/report/github.com/kode4food/caravan) [![Build Status](https://app.travis-ci.com/kode4food/caravan.svg?branch=main)](https://app.travis-ci.com/kode4food/caravan?cache=1) [![Code Coverage](https://qlty.sh/gh/kode4food/projects/caravan/coverage.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![Maintainability](https://qlty.sh/gh/kode4food/projects/caravan/maintainability.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![GitHub](https://img.shields.io/github/license/kode4food/caravan)](https://github.com/kode4food/caravan/blob/main/LICENSE.md)
 
 Caravan is a Go library that provides powerful primitives for building stream processing applications with integrated state management. It combines reactive stream processing with efficient table operations to enable real-time data transformations, aggregations, and stateful workflows.
 
