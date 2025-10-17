@@ -3,6 +3,7 @@ package node_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -381,7 +382,9 @@ func TestTableWatch(t *testing.T) {
 	updater.Update(&row{id: "id1", name: "name1", value: "value1"})
 	updater.Update(&row{id: "id2", name: "name2", value: "value2"})
 
-	watcher, err := node.TableWatch(tbl, updates, []table.ColumnName{"name", "value"})
+	watcher, err := node.TableWatch(
+		tbl, updates, []table.ColumnName{"name", "value"},
+	)
 	as.Nil(err)
 
 	done := make(chan context.Done)
@@ -397,6 +400,356 @@ func TestTableWatch(t *testing.T) {
 	updates <- "id2"
 	result = <-out
 	as.Equal([]string{"name2", "value2"}, result)
+
+	close(done)
+}
+
+func TestTableWatchError(t *testing.T) {
+	as := assert.New(t)
+
+	tbl, _ := makeTestTable()
+	updates := make(chan string, 10)
+
+	// Try to watch with invalid column
+	watcher, err := node.TableWatch(tbl, updates, []table.ColumnName{"invalid"})
+	as.Nil(watcher)
+	as.NotNil(err)
+	as.Contains(err.Error(), "invalid")
+}
+
+func TestTableWatchWithMissingKey(t *testing.T) {
+	as := assert.New(t)
+
+	tbl, _ := makeTestTable()
+	updates := make(chan string, 10)
+
+	watcher, err := node.TableWatch(
+		tbl, updates, []table.ColumnName{"name", "value"},
+	)
+	as.Nil(err)
+
+	done := make(chan context.Done)
+	in := make(chan stream.Source)
+	out := make(chan []string)
+
+	go watcher.Start(context.Make(done, make(chan context.Advice), in, out))
+
+	// Send update for non-existent key - should be silently ignored
+	updates <- "missing-key"
+
+	// Close updates channel to trigger exit
+	close(updates)
+
+	// Wait a bit then close done
+	time.Sleep(10 * time.Millisecond)
+	close(done)
+}
+
+func TestTableScanWithErrors(t *testing.T) {
+	as := assert.New(t)
+
+	tbl, _ := makeTestTable()
+
+	scanner, err := node.TableScan(tbl, "value",
+		func(keys []string) []string {
+			return keys
+		},
+	)
+	as.NotNil(scanner)
+	as.Nil(err)
+
+	done := make(chan context.Done)
+	in := make(chan []string)
+	out := make(chan string)
+	monitor := make(chan context.Advice)
+
+	scanner.Start(context.Make(done, monitor, in, out))
+
+	// Send keys with some missing entries
+	go func() {
+		in <- []string{"missing1", "missing2"}
+	}()
+
+	// Should receive errors for missing keys
+	err1 := (<-monitor).(error)
+	as.Contains(err1.Error(), "missing1")
+
+	err2 := (<-monitor).(error)
+	as.Contains(err2.Error(), "missing2")
+
+	close(done)
+}
+
+func TestTableScanErrorCreation(t *testing.T) {
+	as := assert.New(t)
+
+	tbl, _ := makeTestTable()
+
+	// Try to scan with invalid column
+	scanner, err := node.TableScan(tbl, "invalid-column",
+		func(keys []string) []string {
+			return keys
+		},
+	)
+	as.Nil(scanner)
+	as.NotNil(err)
+	as.Contains(err.Error(), "invalid-column")
+}
+
+func TestTableScanPartialError(t *testing.T) {
+	as := assert.New(t)
+
+	tbl, updater := makeTestTable()
+	updater.Update(&row{id: "id1", name: "name1", value: "value1"})
+
+	scanner, err := node.TableScan(tbl, "value",
+		func(keys []string) []string {
+			return keys
+		},
+	)
+	as.NotNil(scanner)
+	as.Nil(err)
+
+	done := make(chan context.Done)
+	in := make(chan []string)
+	out := make(chan string)
+	monitor := make(chan context.Advice, 10)
+
+	scanner.Start(context.Make(done, monitor, in, out))
+
+	// Send mix of valid and invalid keys
+	go func() {
+		in <- []string{"id1", "missing", "id1"}
+	}()
+
+	// Should get first value
+	as.Equal("value1", <-out)
+
+	// Should get error for missing
+	err = (<-monitor).(error)
+	as.Contains(err.Error(), "missing")
+
+	// Should get second occurrence of id1
+	as.Equal("value1", <-out)
+
+	close(done)
+}
+
+func TestTableScanInterruption(t *testing.T) {
+	as := assert.New(t)
+
+	tbl, updater := makeTestTable()
+	updater.Update(&row{id: "id1", name: "name1", value: "value1"})
+
+	scanner, err := node.TableScan(tbl, "value",
+		func(keys []string) []string {
+			return keys
+		},
+	)
+	as.NotNil(scanner)
+	as.Nil(err)
+
+	done := make(chan context.Done)
+	in := make(chan []string)
+	out := make(chan string, 10)
+
+	scanner.Start(context.Make(done, make(chan context.Advice), in, out))
+
+	// Send keys but close done channel immediately to interrupt
+	go func() {
+		in <- []string{"id1", "id1", "id1"}
+	}()
+
+	// Close done to interrupt processing
+	close(done)
+
+	// Wait a bit to ensure scanner exits
+	time.Sleep(10 * time.Millisecond)
+}
+
+func TestTableAggregateWithError(t *testing.T) {
+	as := assert.New(t)
+
+	// Create a setter that fails on specific keys
+	failingSetter := func(key string, values ...string) error {
+		if key == "error" {
+			return fmt.Errorf("setter failed for key %s", key)
+		}
+		return nil
+	}
+
+	aggregator := node.TableAggregate(
+		0,
+		func(count int, msg string) int {
+			return count + 1
+		},
+		func(count int) (string, []string) {
+			if count > 2 {
+				return "error", []string{fmt.Sprintf("%d", count)}
+			}
+			return "ok", []string{fmt.Sprintf("%d", count)}
+		},
+		failingSetter,
+	)
+
+	done := make(chan context.Done)
+	in := make(chan string)
+	out := make(chan int)
+	monitor := make(chan context.Advice, 10)
+
+	aggregator.Start(context.Make(done, monitor, in, out))
+
+	// Send messages
+	go func() {
+		in <- "msg1"
+		in <- "msg2"
+		in <- "msg3" // This will trigger the error
+	}()
+
+	// First two should work
+	as.Equal(1, <-out)
+	as.Equal(2, <-out)
+
+	// Third should cause an error
+	err := (<-monitor).(error)
+	as.Contains(err.Error(), "setter failed")
+
+	close(done)
+}
+
+func TestTableFilterEmptyTable(t *testing.T) {
+	// Create empty table
+	tbl, _ := caravan.NewTable[string, string]()
+
+	filter := node.TableFilter(tbl, func(id string) string {
+		return id
+	})
+
+	done := make(chan context.Done)
+	in := make(chan string)
+	out := make(chan string)
+	monitor := make(chan context.Advice, 10)
+
+	// Filter should exit immediately for table with no columns
+	filter.Start(context.Make(done, monitor, in, out))
+
+	// Should complete without processing
+	time.Sleep(10 * time.Millisecond)
+	close(done)
+}
+
+func TestTableFilterWithGetterError(t *testing.T) {
+	as := assert.New(t)
+
+	// Create a table but don't add any data
+	tbl, _ := makeTestTable()
+
+	filter := node.TableFilter(tbl, func(id string) string {
+		return id
+	})
+
+	done := make(chan context.Done)
+	in := make(chan string)
+	out := make(chan string)
+
+	filter.Start(context.Make(done, make(chan context.Advice), in, out))
+
+	go func() {
+		// Send IDs that don't exist - they should be filtered out
+		in <- "missing1"
+		in <- "missing2"
+		in <- "missing3"
+		close(in)
+	}()
+
+	// Should not receive any output since all keys are missing
+	select {
+	case v := <-out:
+		as.Fail("Should not receive output for missing keys, got: %v", v)
+	case <-time.After(50 * time.Millisecond):
+		// Expected - no output
+	}
+
+	close(done)
+}
+
+func TestTableJoinError(t *testing.T) {
+	as := assert.New(t)
+
+	tbl, _ := makeTestTable()
+
+	// Try to join with invalid columns
+	joiner, err := node.TableJoin(
+		tbl,
+		[]table.ColumnName{"invalid1", "invalid2"},
+		func(id string) string { return id },
+		func(id string, vals []string) string {
+			return id + ":" + vals[0]
+		},
+	)
+	as.Nil(joiner)
+	as.NotNil(err)
+	as.Contains(err.Error(), "invalid1")
+}
+
+func TestTableJoinMissingKey(t *testing.T) {
+	as := assert.New(t)
+
+	tbl, _ := makeTestTable()
+
+	joiner, err := node.TableJoin(
+		tbl,
+		[]table.ColumnName{"name", "value"},
+		func(id string) string { return id },
+		func(id string, vals []string) string {
+			return id + ":" + vals[0]
+		},
+	)
+	as.NotNil(joiner)
+	as.Nil(err)
+
+	done := make(chan context.Done)
+	in := make(chan string)
+	out := make(chan string)
+	monitor := make(chan context.Advice, 10)
+
+	joiner.Start(context.Make(done, monitor, in, out))
+
+	go func() {
+		in <- "missing-key"
+	}()
+
+	// Should receive error for missing key
+	err = (<-monitor).(error)
+	as.Contains(err.Error(), "missing-key")
+
+	close(done)
+}
+
+func TestTableDeleteWithError(t *testing.T) {
+	as := assert.New(t)
+
+	tbl, _ := makeTestTable()
+
+	deleter := node.TableDelete(tbl, func(id string) string {
+		return id
+	})
+
+	done := make(chan context.Done)
+	in := make(chan string)
+	out := make(chan string)
+	monitor := make(chan context.Advice, 10)
+
+	deleter.Start(context.Make(done, monitor, in, out))
+
+	go func() {
+		// Try to delete non-existent key
+		in <- "missing-key"
+	}()
+
+	// Should receive error
+	err := (<-monitor).(error)
+	as.Contains(err.Error(), "missing-key")
 
 	close(done)
 }

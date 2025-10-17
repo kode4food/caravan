@@ -19,5 +19,5 @@ func NewTableUpdater[Msg any, Key comparable, Value any](
 	t table.Table[Key, Value], k table.KeySelector[Msg, Key],
 	c ...table.Column[Msg, Value],
 ) (table.Updater[Msg, Key, Value], error) {
-	return internal.MakeUpdater[Msg, Key, Value](t, k, c...)
+	return internal.MakeUpdater(t, k, c...)
 }
