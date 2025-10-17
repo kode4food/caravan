@@ -1,7 +1,4 @@
-<h1 align="left">
-  Caravan
-  <img src="./docs/caravan-logo.png" align="right" alt="Caravan Logo" style="max-height: 100px" />
-</h1>
+# Caravan <img src="./docs/caravan-logo.png" align="right" height="100"/>
 
 ### Stream Processing and State Management for Go
 
