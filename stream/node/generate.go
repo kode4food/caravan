@@ -12,9 +12,8 @@ func Generate[Msg any](
 		for {
 			if _, ok := c.FetchMessage(); !ok {
 				return
-			} else if res, ok := fn(); !ok {
-				return
-			} else if !c.ForwardResult(res) {
+			}
+			if res, ok := fn(); !ok || !c.ForwardResult(res) {
 				return
 			}
 		}

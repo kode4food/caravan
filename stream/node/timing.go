@@ -15,14 +15,16 @@ func Throttle[Msg any](rate time.Duration) stream.Processor[Msg, Msg] {
 		defer ticker.Stop()
 
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				<-ticker.C
-				if !c.ForwardResult(msg) {
-					return
-				}
 			}
+
+			<-ticker.C
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -53,18 +55,19 @@ func Debounce[Msg any](d time.Duration) stream.Processor[Msg, Msg] {
 		}()
 
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				if timer != nil {
 					timer.Stop()
 				}
 				return
-			} else {
-				select {
-				case pending <- msg:
-				default:
-					<-pending
-					pending <- msg
-				}
+			}
+
+			select {
+			case pending <- msg:
+			default:
+				<-pending
+				pending <- msg
 			}
 		}
 	}
@@ -75,14 +78,16 @@ func Debounce[Msg any](d time.Duration) stream.Processor[Msg, Msg] {
 func Delay[Msg any](d time.Duration) stream.Processor[Msg, Msg] {
 	return func(c *context.Context[Msg, Msg]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				time.Sleep(d)
-				if !c.ForwardResult(msg) {
-					return
-				}
 			}
+
+			time.Sleep(d)
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -110,17 +115,17 @@ func Sample[Msg any](period time.Duration) stream.Processor[Msg, Msg] {
 					pending = nil
 				}
 			default:
-				if msg, ok := c.FetchMessage(); !ok {
-					// Flush any pending message before closing
-					if hasPending {
-						c.ForwardResult(*pending)
-					}
-					return
-				} else {
+				if msg, ok := c.FetchMessage(); ok {
 					// Store latest message, will be emitted on next tick
 					pending = &msg
 					hasPending = true
+					continue
 				}
+				// Flush any pending message before closing
+				if hasPending {
+					c.ForwardResult(*pending)
+				}
+				return
 			}
 		}
 	}

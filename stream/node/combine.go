@@ -65,10 +65,7 @@ func Zip[Left, Right any](
 	right stream.Processor[stream.Source, Right],
 ) stream.Processor[stream.Source, Pair[Left, Right]] {
 	return func(c *context.Context[stream.Source, Pair[Left, Right]]) {
-		leftOut := make(chan Left)
-		rightOut := make(chan Right)
-		left.Start(context.WithOut(c, leftOut))
-		right.Start(context.WithOut(c, rightOut))
+		leftOut, rightOut := startBinaryProcessors(c, left, right)
 
 		for {
 			select {
@@ -102,10 +99,7 @@ func ZipWith[Left, Right, Out any](
 	combiner BinaryOperator[Left, Right, Out],
 ) stream.Processor[stream.Source, Out] {
 	return func(c *context.Context[stream.Source, Out]) {
-		leftOut := make(chan Left)
-		rightOut := make(chan Right)
-		left.Start(context.WithOut(c, leftOut))
-		right.Start(context.WithOut(c, rightOut))
+		leftOut, rightOut := startBinaryProcessors(c, left, right)
 
 		for {
 			select {
@@ -139,10 +133,7 @@ func CombineLatest[Left, Right, Out any](
 	combiner BinaryOperator[Left, Right, Out],
 ) stream.Processor[stream.Source, Out] {
 	return func(c *context.Context[stream.Source, Out]) {
-		leftOut := make(chan Left)
-		rightOut := make(chan Right)
-		left.Start(context.WithOut(c, leftOut))
-		right.Start(context.WithOut(c, rightOut))
+		leftOut, rightOut := startBinaryProcessors(c, left, right)
 
 		var (
 			latestLeft  Left
@@ -201,10 +192,7 @@ func Join[Left, Right, Out any](
 	join BinaryOperator[Left, Right, Out],
 ) stream.Processor[stream.Source, Out] {
 	return func(c *context.Context[stream.Source, Out]) {
-		leftOut := make(chan Left)
-		rightOut := make(chan Right)
-		left.Start(context.WithOut(c, leftOut))
-		right.Start(context.WithOut(c, rightOut))
+		leftOut, rightOut := startBinaryProcessors(c, left, right)
 
 		joinResults := func() (Left, Right, bool) {
 			var leftZero Left
@@ -230,13 +218,29 @@ func Join[Left, Right, Out any](
 		}
 
 		for {
-			if left, right, ok := joinResults(); !ok {
+			left, right, ok := joinResults()
+			if !ok {
 				return
-			} else if !pred(left, right) {
+			}
+			if !pred(left, right) {
 				continue
-			} else if !c.ForwardResult(join(left, right)) {
+			}
+			if !c.ForwardResult(join(left, right)) {
 				return
 			}
 		}
 	}
+}
+
+// startBinaryProcessors sets up two processors with their output channels
+func startBinaryProcessors[Left, Right, Out any](
+	c *context.Context[stream.Source, Out],
+	left stream.Processor[stream.Source, Left],
+	right stream.Processor[stream.Source, Right],
+) (chan Left, chan Right) {
+	leftOut := make(chan Left)
+	rightOut := make(chan Right)
+	left.Start(context.WithOut(c, leftOut))
+	right.Start(context.WithOut(c, rightOut))
+	return leftOut, rightOut
 }

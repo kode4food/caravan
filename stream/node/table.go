@@ -20,15 +20,23 @@ func TableLookup[Msg any, Key comparable, Value any](
 	}
 	return func(c *context.Context[Msg, Value]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
-				return
-			} else if res, e := get(key(msg)); e != nil {
-				if !c.Error(e) {
-					return
-				}
-			} else if !c.ForwardResult(res[0]) {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
 			}
+
+			res, e := get(key(msg))
+			if e != nil {
+				if c.Error(e) {
+					continue
+				}
+				return
+			}
+
+			if c.ForwardResult(res[0]) {
+				continue
+			}
+			return
 		}
 	}, nil
 }
@@ -40,15 +48,23 @@ func TableUpdater[Msg any, Key comparable, Value any](
 ) stream.Processor[Msg, Msg] {
 	return func(c *context.Context[Msg, Msg]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
-				return
-			} else if e := t.Update(msg); e != nil {
-				if !c.Error(e) {
-					return
-				}
-			} else if !c.ForwardResult(msg) {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
 			}
+
+			e := t.Update(msg)
+			if e != nil {
+				if c.Error(e) {
+					continue
+				}
+				return
+			}
+
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -64,22 +80,31 @@ func TableScan[Msg any, Key comparable, Value any](
 	}
 	return func(c *context.Context[Msg, Value]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				keys := fn(msg)
-				for _, key := range keys {
-					if res, e := get(key); e != nil {
-						if !c.Error(e) {
-							return
-						}
-					} else {
-						if !c.ForwardResult(res[0]) {
-							return
-						}
+			}
+
+			keys := fn(msg)
+			allProcessed := true
+			for _, key := range keys {
+				res, e := get(key)
+				if e != nil {
+					if !c.Error(e) {
+						allProcessed = false
+						break
 					}
+					continue
+				}
+				if !c.ForwardResult(res[0]) {
+					allProcessed = false
+					break
 				}
 			}
+			if allProcessed {
+				continue
+			}
+			return
 		}
 	}, nil
 }
@@ -91,19 +116,17 @@ func TableBatchUpdate[Msg any, Key comparable, Value any](
 ) stream.Processor[[]Msg, []Msg] {
 	return func(c *context.Context[[]Msg, []Msg]) {
 		for {
-			if batch, ok := c.FetchMessage(); !ok {
+			batch, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				for _, msg := range batch {
-					if e := t.Update(msg); e != nil {
-						if !c.Error(e) {
-							return
-						}
-					}
-				}
-				if !c.ForwardResult(batch) {
+			}
+			for _, msg := range batch {
+				if e := t.Update(msg); e != nil && !c.Error(e) {
 					return
 				}
+			}
+			if !c.ForwardResult(batch) {
+				return
 			}
 		}
 	}
@@ -118,22 +141,22 @@ func TableAggregate[Msg any, Agg any, Key comparable, Value any](
 	return func(c *context.Context[Msg, Agg]) {
 		agg := init
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				agg = fn(agg, msg)
-
-				key, values := toRow(agg)
-				if e := set(key, values...); e != nil {
-					if !c.Error(e) {
-						return
-					}
-				}
-
-				if !c.ForwardResult(agg) {
-					return
-				}
 			}
+
+			agg = fn(agg, msg)
+
+			key, values := toRow(agg)
+			if e := set(key, values...); e != nil && !c.Error(e) {
+				return
+			}
+
+			if c.ForwardResult(agg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -155,16 +178,19 @@ func TableFilter[Msg any, Key comparable, Value any](
 		}
 
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				k := key(msg)
-				if _, e := get(k); e == nil {
-					if !c.ForwardResult(msg) {
-						return
-					}
-				}
 			}
+
+			k := key(msg)
+			if _, e := get(k); e != nil {
+				continue
+			}
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -183,21 +209,25 @@ func TableJoin[Msg any, Key comparable, Value any, Out any](
 
 	return func(c *context.Context[Msg, Out]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				k := key(msg)
-				if values, e := get(k); e != nil {
-					if !c.Error(e) {
-						return
-					}
-				} else {
-					result := fn(msg, values)
-					if !c.ForwardResult(result) {
-						return
-					}
-				}
 			}
+
+			k := key(msg)
+			values, e := get(k)
+			if e != nil {
+				if c.Error(e) {
+					continue
+				}
+				return
+			}
+
+			result := fn(msg, values)
+			if c.ForwardResult(result) {
+				continue
+			}
+			return
 		}
 	}, nil
 }
@@ -209,19 +239,23 @@ func TableDelete[Msg any, Key comparable, Value any](
 ) stream.Processor[Msg, Msg] {
 	return func(c *context.Context[Msg, Msg]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				k := key(msg)
-				if e := tbl.Delete(k); e != nil {
-					if !c.Error(e) {
-						return
-					}
-				}
-				if !c.ForwardResult(msg) {
-					return
-				}
 			}
+
+			k := key(msg)
+			if e := tbl.Delete(k); e != nil {
+				if c.Error(e) {
+					continue
+				}
+				return
+			}
+
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }

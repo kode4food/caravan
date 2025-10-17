@@ -7,6 +7,8 @@ import (
 	"github.com/kode4food/caravan/stream/context"
 )
 
+const backoffMultiplier = 2
+
 // RetryMapper is a function that can fail and should be retried
 type RetryMapper[From, To any] func(From) (To, error)
 
@@ -17,31 +19,34 @@ func Retry[From, To any](
 ) stream.Processor[From, To] {
 	return func(c *context.Context[From, To]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				backoff := initialBackoff
-				var result To
-				var err error
+			}
 
-				for attempt := 0; attempt < maxAttempts; attempt++ {
-					result, err = fn(msg)
-					if err == nil {
-						break
-					}
-					if attempt < maxAttempts-1 {
-						time.Sleep(backoff)
-						backoff *= 2
-					}
-				}
+			backoff := initialBackoff
+			var result To
+			var err error
 
-				// Only forward if we succeeded
+			for attempt := 0; attempt < maxAttempts; attempt++ {
+				result, err = fn(msg)
 				if err == nil {
-					if !c.ForwardResult(result) {
-						return
-					}
+					break
+				}
+				if attempt < maxAttempts-1 {
+					time.Sleep(backoff)
+					backoff *= backoffMultiplier
 				}
 			}
+
+			// Only forward if we succeeded
+			if err != nil {
+				continue
+			}
+			if c.ForwardResult(result) {
+				continue
+			}
+			return
 		}
 	}
 }

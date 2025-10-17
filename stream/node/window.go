@@ -26,15 +26,15 @@ func Window[Msg any](duration time.Duration) stream.Processor[Msg, []Msg] {
 					window = make([]Msg, 0)
 				}
 			default:
-				if msg, ok := c.FetchMessage(); !ok {
-					// Flush remaining window on close
-					if len(window) > 0 {
-						c.ForwardResult(window)
-					}
-					return
-				} else {
+				if msg, ok := c.FetchMessage(); ok {
 					window = append(window, msg)
+					continue
 				}
+				// Flush remaining window on close
+				if len(window) > 0 {
+					c.ForwardResult(window)
+				}
+				return
 			}
 		}
 	}
@@ -47,19 +47,22 @@ func SlidingWindow[Msg any](size int) stream.Processor[Msg, []Msg] {
 		window := make([]Msg, 0, size)
 
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				window = append(window, msg)
-				if len(window) > size {
-					window = window[1:]
-				}
-				if len(window) == size {
-					if !c.ForwardResult(window) {
-						return
-					}
-				}
 			}
+
+			window = append(window, msg)
+			if len(window) > size {
+				window = window[1:]
+			}
+			if len(window) != size {
+				continue
+			}
+			if c.ForwardResult(window) {
+				continue
+			}
+			return
 		}
 	}
 }

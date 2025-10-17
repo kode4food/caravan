@@ -30,16 +30,15 @@ func Buffer[Msg any](
 		}
 
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				flush()
 				return
-			} else {
-				batch = append(batch, msg)
-				if len(batch) >= size {
-					if !flush() {
-						return
-					}
-				}
+			}
+
+			batch = append(batch, msg)
+			if len(batch) >= size && !flush() {
+				return
 			}
 		}
 	}

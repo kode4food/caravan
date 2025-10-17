@@ -19,14 +19,15 @@ func GroupBy[Msg any, Key comparable](
 ) stream.Processor[Msg, *Grouped[Msg, Key]] {
 	return func(c *context.Context[Msg, *Grouped[Msg, Key]]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
-				return
-			} else if !c.ForwardResult(&Grouped[Msg, Key]{
-				key: fn(msg),
-				msg: msg,
-			}) {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
 			}
+
+			if c.ForwardResult(&Grouped[Msg, Key]{key: fn(msg), msg: msg}) {
+				continue
+			}
+			return
 		}
 	}
 }

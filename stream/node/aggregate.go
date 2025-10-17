@@ -37,27 +37,28 @@ func reduce[In, Out any](
 		} else {
 			fetchFirst = func() (Out, bool) {
 				var zero Out
-				if msg, ok := c.FetchMessage(); !ok {
-					return zero, false
-				} else {
+				if msg, ok := c.FetchMessage(); ok {
 					return fn(zero, msg), true
 				}
+				return zero, false
 			}
 		}
 
-		if res, ok := fetchFirst(); !ok {
+		res, ok := fetchFirst()
+		if !ok {
 			return
-		} else {
-			for {
-				if msg, ok := c.FetchMessage(); !ok {
-					return
-				} else {
-					res = fn(res, msg)
-					if !c.ForwardResult(res) {
-						return
-					}
-				}
+		}
+		for {
+			msg, ok := c.FetchMessage()
+			if !ok {
+				return
 			}
+
+			res = fn(res, msg)
+			if c.ForwardResult(res) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -94,14 +95,16 @@ func scan[In, Out any](
 		}
 
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				res = fn(res, msg)
-				if !c.ForwardResult(res) {
-					return
-				}
 			}
+
+			res = fn(res, msg)
+			if c.ForwardResult(res) {
+				continue
+			}
+			return
 		}
 	}
 }

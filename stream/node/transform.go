@@ -10,13 +10,18 @@ import (
 func Filter[Msg any](fn Predicate[Msg]) stream.Processor[Msg, Msg] {
 	return func(c *context.Context[Msg, Msg]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
-				return
-			} else if !fn(msg) {
-				continue
-			} else if !c.ForwardResult(msg) {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
 			}
+
+			if !fn(msg) {
+				continue
+			}
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -26,11 +31,15 @@ func Filter[Msg any](fn Predicate[Msg]) stream.Processor[Msg, Msg] {
 func Map[From, To any](fn Mapper[From, To]) stream.Processor[From, To] {
 	return func(c *context.Context[From, To]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
-				return
-			} else if !c.ForwardResult(fn(msg)) {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
 			}
+
+			if c.ForwardResult(fn(msg)) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -40,16 +49,23 @@ func Map[From, To any](fn Mapper[From, To]) stream.Processor[From, To] {
 func FlatMap[From, To any](fn FlatMapper[From, To]) stream.Processor[From, To] {
 	return func(c *context.Context[From, To]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				results := fn(msg)
-				for _, result := range results {
-					if !c.ForwardResult(result) {
-						return
-					}
+			}
+
+			results := fn(msg)
+			allForwarded := true
+			for _, result := range results {
+				if !c.ForwardResult(result) {
+					allForwarded = false
+					break
 				}
 			}
+			if allForwarded {
+				continue
+			}
+			return
 		}
 	}
 }

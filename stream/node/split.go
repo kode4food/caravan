@@ -45,11 +45,15 @@ func Split[In, Out any](
 		}
 
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
-				return
-			} else if !forwardInput(msg) {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
 			}
+
+			if forwardInput(msg) {
+				continue
+			}
+			return
 		}
 	}
 }

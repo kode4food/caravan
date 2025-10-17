@@ -10,14 +10,16 @@ func Take[Msg any](n int) stream.Processor[Msg, Msg] {
 	return func(c *context.Context[Msg, Msg]) {
 		count := 0
 		for count < n {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				count++
-				if !c.ForwardResult(msg) {
-					return
-				}
 			}
+
+			count++
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -27,13 +29,18 @@ func Take[Msg any](n int) stream.Processor[Msg, Msg] {
 func TakeWhile[Msg any](pred Predicate[Msg]) stream.Processor[Msg, Msg] {
 	return func(c *context.Context[Msg, Msg]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
-				return
-			} else if !pred(msg) {
-				return
-			} else if !c.ForwardResult(msg) {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
 			}
+
+			if !pred(msg) {
+				return
+			}
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -43,14 +50,19 @@ func Skip[Msg any](n int) stream.Processor[Msg, Msg] {
 	return func(c *context.Context[Msg, Msg]) {
 		count := 0
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
-				return
-			} else if count < n {
-				count++
-				continue
-			} else if !c.ForwardResult(msg) {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
 			}
+
+			if count < n {
+				count++
+				continue
+			}
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -61,16 +73,20 @@ func SkipWhile[Msg any](pred Predicate[Msg]) stream.Processor[Msg, Msg] {
 	return func(c *context.Context[Msg, Msg]) {
 		skipping := true
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else if skipping && pred(msg) {
-				continue
-			} else {
-				skipping = false
-				if !c.ForwardResult(msg) {
-					return
-				}
 			}
+
+			if skipping && pred(msg) {
+				continue
+			}
+			skipping = false
+
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -82,15 +98,21 @@ func Distinct[Msg any](eq Equality[Msg]) stream.Processor[Msg, Msg] {
 		var last *Msg
 
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else if last == nil || !eq(*last, msg) {
-				msgCopy := msg
-				last = &msgCopy
-				if !c.ForwardResult(msg) {
-					return
-				}
 			}
+
+			if last != nil && eq(*last, msg) {
+				continue
+			}
+			msgCopy := msg
+			last = &msgCopy
+
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }
@@ -104,17 +126,21 @@ func DistinctBy[Msg any, Key comparable](
 		var lastKey *Key
 
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				key := fn(msg)
-				if lastKey == nil || *lastKey != key {
-					lastKey = &key
-					if !c.ForwardResult(msg) {
-						return
-					}
-				}
 			}
+
+			key := fn(msg)
+			if lastKey != nil && *lastKey == key {
+				continue
+			}
+			lastKey = &key
+
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }

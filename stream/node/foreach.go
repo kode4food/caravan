@@ -10,14 +10,16 @@ import (
 func ForEach[Msg any](fn Consumer[Msg]) stream.Processor[Msg, Msg] {
 	return func(c *context.Context[Msg, Msg]) {
 		for {
-			if msg, ok := c.FetchMessage(); !ok {
+			msg, ok := c.FetchMessage()
+			if !ok {
 				return
-			} else {
-				fn(msg)
-				if !c.ForwardResult(msg) {
-					return
-				}
 			}
+
+			fn(msg)
+			if c.ForwardResult(msg) {
+				continue
+			}
+			return
 		}
 	}
 }

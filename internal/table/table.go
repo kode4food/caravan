@@ -93,11 +93,11 @@ func (t *Table[Key, Value]) Setter(
 func (t *Table[_, _]) columnIndexes(c []table.ColumnName) ([]int, error) {
 	sel := make([]int, len(c))
 	for i, name := range c {
-		s, ok := t.indexes[name]
-		if !ok {
-			return nil, fmt.Errorf(table.ErrColumnNotFound, name)
+		if s, ok := t.indexes[name]; ok {
+			sel[i] = s
+			continue
 		}
-		sel[i] = s
+		return nil, fmt.Errorf(table.ErrColumnNotFound, name)
 	}
 	return sel, nil
 }
