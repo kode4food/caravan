@@ -22,7 +22,7 @@ type (
 
 // Error messages
 const (
-	// ErrReceiverClosed is raised when MustReceive is called on a closed Receiver
+	// ErrReceiverClosed is raised when Receive is called on a closed Receiver
 	ErrReceiverClosed = "receiver is closed"
 )
 
