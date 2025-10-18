@@ -6,7 +6,7 @@ import (
 
 	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/stream/node"
-	"github.com/kode4food/caravan/table/column"
+	"github.com/kode4food/caravan/table"
 )
 
 // Example: Real-time order processing with table operations
@@ -52,16 +52,16 @@ func example1BatchUpdates() {
 	orderUpdater, _ := caravan.NewTableUpdater(
 		ordersTable,
 		func(o *Order) string { return o.ID },
-		column.Make("id",
+		table.MakeColumn("id",
 			func(o *Order) string { return o.ID },
 		),
-		column.Make("user_id",
+		table.MakeColumn("user_id",
 			func(o *Order) string { return o.UserID },
 		),
-		column.Make("amount",
+		table.MakeColumn("amount",
 			func(o *Order) string { return fmt.Sprintf("%d", o.Amount) },
 		),
-		column.Make("status",
+		table.MakeColumn("status",
 			func(o *Order) string { return o.Status },
 		),
 	)
@@ -289,13 +289,13 @@ func example4ComplexWorkflow() {
 	orderUpdater, _ := caravan.NewTableUpdater(
 		ordersTable,
 		func(o *Order) string { return o.ID },
-		column.Make("id",
+		table.MakeColumn("id",
 			func(o *Order) string { return o.ID },
 		),
-		column.Make("user_id",
+		table.MakeColumn("user_id",
 			func(o *Order) string { return o.UserID },
 		),
-		column.Make("amount",
+		table.MakeColumn("amount",
 			func(o *Order) string { return fmt.Sprintf("%d", o.Amount) },
 		),
 	)

@@ -1,4 +1,4 @@
-package column_test
+package table_test
 
 import (
 	"testing"
@@ -6,13 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kode4food/caravan/table"
-	"github.com/kode4food/caravan/table/column"
 )
 
 func TestColumn(t *testing.T) {
 	as := assert.New(t)
 
-	c := column.Make[any, string]("some-col", func(_ any) string {
+	c := table.MakeColumn[any, string]("some-col", func(_ any) string {
 		return "hello"
 	})
 

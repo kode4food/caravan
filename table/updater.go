@@ -18,13 +18,6 @@ type (
 		Update(Msg) error
 	}
 
-	// Column describes a column, including its name and a ValueSelector for
-	// retrieving the column's value from a message
-	Column[Msg, Value any] interface {
-		Name() ColumnName
-		Select(Msg) Value
-	}
-
 	// KeySelector is used to extract a Key from a message
 	KeySelector[Msg any, Key comparable] func(Msg) Key
 

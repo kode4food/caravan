@@ -6,10 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/kode4food/caravan/table"
-	"github.com/kode4food/caravan/table/column"
-
 	internal "github.com/kode4food/caravan/internal/table"
+	"github.com/kode4food/caravan/table"
 )
 
 type tableRow struct {
@@ -33,10 +31,10 @@ func TestUpdater(t *testing.T) {
 		func(e *tableRow) string {
 			return e.key
 		},
-		column.Make("name", func(r *tableRow) any {
+		table.MakeColumn("name", func(r *tableRow) any {
 			return r.name
 		}),
-		column.Make("age", func(r *tableRow) any {
+		table.MakeColumn("age", func(r *tableRow) any {
 			return r.age
 		}),
 	)

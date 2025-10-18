@@ -12,7 +12,6 @@ import (
 	"github.com/kode4food/caravan/stream/context"
 	"github.com/kode4food/caravan/stream/node"
 	"github.com/kode4food/caravan/table"
-	"github.com/kode4food/caravan/table/column"
 )
 
 type row struct {
@@ -31,13 +30,13 @@ func makeTestTable() (
 		func(r *row) string {
 			return r.id
 		},
-		column.Make("id", func(r *row) string {
+		table.MakeColumn("id", func(r *row) string {
 			return r.id
 		}),
-		column.Make("name", func(r *row) string {
+		table.MakeColumn("name", func(r *row) string {
 			return r.name
 		}),
-		column.Make("value", func(r *row) string {
+		table.MakeColumn("value", func(r *row) string {
 			return r.value
 		}),
 	)

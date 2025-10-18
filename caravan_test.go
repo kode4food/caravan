@@ -10,7 +10,6 @@ import (
 	"github.com/kode4food/caravan/stream/context"
 	"github.com/kode4food/caravan/stream/node"
 	"github.com/kode4food/caravan/table"
-	"github.com/kode4food/caravan/table/column"
 )
 
 func TestNewStream(t *testing.T) {
@@ -131,7 +130,7 @@ func TestNewTableUpdater(t *testing.T) {
 	})
 
 	// Create column selector
-	valueColumn := column.Make[Message, int](
+	valueColumn := table.MakeColumn[Message, int](
 		"value",
 		table.ValueSelector[Message, int](func(msg Message) int {
 			return msg.Value
