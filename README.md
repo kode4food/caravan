@@ -13,7 +13,7 @@ _This is a work in progress. The basics are there, but not yet ready for product
 - **Topics** - FIFO message logs with independent producer/consumer tracking
 - **Streams** - Composable stream processing pipelines with rich operators
 - **Tables** - In-memory key-value tables with column-based storage
-- **Type Safety** - Fully generic APIs leveraging Go 1.25+ generics
+- **Type Safety** - Fully generic APIs leveraging Go generics
 - **Backpressure** - Natural flow control through channel semantics
 - **Batch Operations** - Efficient batch updates for high-throughput scenarios
 - **Aggregations** - Stateful stream aggregations with table integration
@@ -24,8 +24,6 @@ _This is a work in progress. The basics are there, but not yet ready for product
 ```bash
 go get github.com/kode4food/caravan
 ```
-
-Requires Go 1.25 or later.
 
 ## Quick Start
 
