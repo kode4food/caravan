@@ -113,9 +113,9 @@ usersTable, _ := caravan.NewTable[string, string](
 updater, _ := caravan.NewTableUpdater(
     usersTable,
     func(u *User) string { return u.ID },
-    column.Make("id", func(u *User) string { return u.ID }),
-    column.Make("name", func(u *User) string { return u.Name }),
-    column.Make("email", func(u *User) string { return u.Email }),
+    table.MakeColumn("id", func(u *User) string { return u.ID }),
+    table.MakeColumn("name", func(u *User) string { return u.Name }),
+    table.MakeColumn("email", func(u *User) string { return u.Email }),
 )
 
 // Update the table from a stream
