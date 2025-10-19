@@ -64,32 +64,9 @@ func Zip[Left, Right any](
 	left stream.Processor[stream.Source, Left],
 	right stream.Processor[stream.Source, Right],
 ) stream.Processor[stream.Source, Pair[Left, Right]] {
-	return func(c *context.Context[stream.Source, Pair[Left, Right]]) {
-		leftOut, rightOut := startBinaryProcessors(c, left, right)
-
-		for {
-			select {
-			case <-c.Done:
-				return
-			case leftMsg, ok := <-leftOut:
-				if !ok {
-					return
-				}
-				select {
-				case <-c.Done:
-					return
-				case rightMsg, ok := <-rightOut:
-					if !ok {
-						return
-					}
-					p := Pair[Left, Right]{Left: leftMsg, Right: rightMsg}
-					if !c.ForwardResult(p) {
-						return
-					}
-				}
-			}
-		}
-	}
+	return ZipWith(left, right, func(l Left, r Right) Pair[Left, Right] {
+		return Pair[Left, Right]{Left: l, Right: r}
+	})
 }
 
 // ZipWith combines two streams using a custom combiner function
@@ -113,10 +90,7 @@ func ZipWith[Left, Right, Out any](
 				case <-c.Done:
 					return
 				case rightMsg, ok := <-rightOut:
-					if !ok {
-						return
-					}
-					if !c.ForwardResult(combiner(leftMsg, rightMsg)) {
+					if !ok || !c.ForwardResult(combiner(leftMsg, rightMsg)) {
 						return
 					}
 				}
@@ -219,13 +193,7 @@ func Join[Left, Right, Out any](
 
 		for {
 			left, right, ok := joinResults()
-			if !ok {
-				return
-			}
-			if !pred(left, right) {
-				continue
-			}
-			if !c.ForwardResult(join(left, right)) {
+			if !ok || pred(left, right) && !c.ForwardResult(join(left, right)) {
 				return
 			}
 		}

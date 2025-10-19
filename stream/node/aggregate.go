@@ -27,24 +27,24 @@ func ReduceFrom[In, Out any](
 func reduce[In, Out any](
 	fn Reducer[Out, In], initial initialReduction[Out],
 ) stream.Processor[In, Out] {
-	return func(c *context.Context[In, Out]) {
-		var fetchFirst func() (Out, bool)
+	var fetchFirst func(*context.Context[In, Out]) (Out, bool)
 
-		if initial != nil {
-			fetchFirst = func() (Out, bool) {
-				return initial(), true
-			}
-		} else {
-			fetchFirst = func() (Out, bool) {
-				var zero Out
-				if msg, ok := c.FetchMessage(); ok {
-					return fn(zero, msg), true
-				}
-				return zero, false
-			}
+	if initial != nil {
+		fetchFirst = func(_ *context.Context[In, Out]) (Out, bool) {
+			return initial(), true
 		}
+	} else {
+		fetchFirst = func(c *context.Context[In, Out]) (Out, bool) {
+			var zero Out
+			if msg, ok := c.FetchMessage(); ok {
+				return fn(zero, msg), true
+			}
+			return zero, false
+		}
+	}
 
-		res, ok := fetchFirst()
+	return func(c *context.Context[In, Out]) {
+		res, ok := fetchFirst(c)
 		if !ok {
 			return
 		}
@@ -55,10 +55,9 @@ func reduce[In, Out any](
 			}
 
 			res = fn(res, msg)
-			if c.ForwardResult(res) {
-				continue
+			if !c.ForwardResult(res) {
+				return
 			}
-			return
 		}
 	}
 }
@@ -83,17 +82,17 @@ func ScanFrom[In, Out any](
 func scan[In, Out any](
 	fn Reducer[Out, In], initial initialReduction[Out],
 ) stream.Processor[In, Out] {
+	var res Out
+
+	if initial != nil {
+		res = initial()
+	} else {
+		// For Scan without initial value, use zero value as starting point
+		var zero Out
+		res = zero
+	}
+
 	return func(c *context.Context[In, Out]) {
-		var res Out
-
-		if initial != nil {
-			res = initial()
-		} else {
-			// For Scan without initial value, use zero value as starting point
-			var zero Out
-			res = zero
-		}
-
 		for {
 			msg, ok := c.FetchMessage()
 			if !ok {
@@ -101,10 +100,9 @@ func scan[In, Out any](
 			}
 
 			res = fn(res, msg)
-			if c.ForwardResult(res) {
-				continue
+			if !c.ForwardResult(res) {
+				return
 			}
-			return
 		}
 	}
 }

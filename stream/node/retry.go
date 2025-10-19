@@ -40,13 +40,9 @@ func Retry[From, To any](
 			}
 
 			// Only forward if we succeeded
-			if err != nil {
-				continue
+			if err == nil && !c.ForwardResult(result) {
+				return
 			}
-			if c.ForwardResult(result) {
-				continue
-			}
-			return
 		}
 	}
 }

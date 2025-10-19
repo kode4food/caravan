@@ -24,10 +24,10 @@ func GroupBy[Msg any, Key comparable](
 				return
 			}
 
-			if c.ForwardResult(&Grouped[Msg, Key]{key: fn(msg), msg: msg}) {
-				continue
+			grp := &Grouped[Msg, Key]{key: fn(msg), msg: msg}
+			if !c.ForwardResult(grp) {
+				return
 			}
-			return
 		}
 	}
 }

@@ -19,14 +19,9 @@ func SidechainTo[Msg any](ch chan<- Msg) stream.Processor[Msg, Msg] {
 
 		for {
 			msg, ok := c.FetchMessage()
-			if !ok {
+			if !ok || !forwardToChannel(msg) || !c.ForwardResult(msg) {
 				return
 			}
-
-			if forwardToChannel(msg) && c.ForwardResult(msg) {
-				continue
-			}
-			return
 		}
 	}
 }

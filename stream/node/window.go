@@ -56,13 +56,9 @@ func SlidingWindow[Msg any](size int) stream.Processor[Msg, []Msg] {
 			if len(window) > size {
 				window = window[1:]
 			}
-			if len(window) != size {
-				continue
+			if len(window) == size && !c.ForwardResult(window) {
+				return
 			}
-			if c.ForwardResult(window) {
-				continue
-			}
-			return
 		}
 	}
 }

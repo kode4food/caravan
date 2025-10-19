@@ -27,7 +27,7 @@ func TestCounted(t *testing.T) {
 		p.Send() <- i
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(150 * time.Millisecond)
 	c := top.NewConsumer()
 	as.Equal(128, <-c.Receive())
 

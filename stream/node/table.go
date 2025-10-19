@@ -14,31 +14,9 @@ func TableLookup[Msg any, Key comparable, Value any](
 	tbl table.Table[Key, Value], col table.ColumnName,
 	key table.KeySelector[Msg, Key],
 ) (stream.Processor[Msg, Value], error) {
-	get, err := tbl.Getter(col)
-	if err != nil {
-		return nil, err
-	}
-	return func(c *context.Context[Msg, Value]) {
-		for {
-			msg, ok := c.FetchMessage()
-			if !ok {
-				return
-			}
-
-			res, e := get(key(msg))
-			if e != nil {
-				if c.Error(e) {
-					continue
-				}
-				return
-			}
-
-			if c.ForwardResult(res[0]) {
-				continue
-			}
-			return
-		}
-	}, nil
+	return TableScan(tbl, col, func(msg Msg) []Key {
+		return []Key{key(msg)}
+	})
 }
 
 // TableUpdater constructs a processor that sends all messages it sees to the
@@ -61,10 +39,9 @@ func TableUpdater[Msg any, Key comparable, Value any](
 				return
 			}
 
-			if c.ForwardResult(msg) {
-				continue
+			if !c.ForwardResult(msg) {
+				return
 			}
-			return
 		}
 	}
 }
@@ -101,10 +78,9 @@ func TableScan[Msg any, Key comparable, Value any](
 					break
 				}
 			}
-			if allProcessed {
-				continue
+			if !allProcessed {
+				return
 			}
-			return
 		}
 	}, nil
 }
@@ -153,10 +129,9 @@ func TableAggregate[Msg any, Agg any, Key comparable, Value any](
 				return
 			}
 
-			if c.ForwardResult(agg) {
-				continue
+			if !c.ForwardResult(agg) {
+				return
 			}
-			return
 		}
 	}
 }
@@ -187,10 +162,9 @@ func TableFilter[Msg any, Key comparable, Value any](
 			if _, e := get(k); e != nil {
 				continue
 			}
-			if c.ForwardResult(msg) {
-				continue
+			if !c.ForwardResult(msg) {
+				return
 			}
-			return
 		}
 	}
 }
@@ -223,11 +197,9 @@ func TableJoin[Msg any, Key comparable, Value any, Out any](
 				return
 			}
 
-			result := fn(msg, values)
-			if c.ForwardResult(result) {
-				continue
+			if !c.ForwardResult(fn(msg, values)) {
+				return
 			}
-			return
 		}
 	}, nil
 }
@@ -252,10 +224,9 @@ func TableDelete[Msg any, Key comparable, Value any](
 				return
 			}
 
-			if c.ForwardResult(msg) {
-				continue
+			if !c.ForwardResult(msg) {
+				return
 			}
-			return
 		}
 	}
 }

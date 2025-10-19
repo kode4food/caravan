@@ -21,10 +21,9 @@ func Throttle[Msg any](rate time.Duration) stream.Processor[Msg, Msg] {
 			}
 
 			<-ticker.C
-			if c.ForwardResult(msg) {
-				continue
+			if !c.ForwardResult(msg) {
+				return
 			}
-			return
 		}
 	}
 }
@@ -84,10 +83,9 @@ func Delay[Msg any](d time.Duration) stream.Processor[Msg, Msg] {
 			}
 
 			time.Sleep(d)
-			if c.ForwardResult(msg) {
-				continue
+			if !c.ForwardResult(msg) {
+				return
 			}
-			return
 		}
 	}
 }

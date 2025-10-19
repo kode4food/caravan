@@ -7,21 +7,14 @@ import (
 
 // Take constructs a Processor that forwards only the first n messages
 func Take[Msg any](n int) stream.Processor[Msg, Msg] {
-	return func(c *context.Context[Msg, Msg]) {
-		count := 0
-		for count < n {
-			msg, ok := c.FetchMessage()
-			if !ok {
-				return
-			}
-
+	count := 0
+	return TakeWhile(func(_ Msg) bool {
+		if count < n {
 			count++
-			if c.ForwardResult(msg) {
-				continue
-			}
-			return
+			return true
 		}
-	}
+		return false
+	})
 }
 
 // TakeWhile constructs a Processor that forwards messages until the
@@ -34,13 +27,9 @@ func TakeWhile[Msg any](pred Predicate[Msg]) stream.Processor[Msg, Msg] {
 				return
 			}
 
-			if !pred(msg) {
+			if !pred(msg) || !c.ForwardResult(msg) {
 				return
 			}
-			if c.ForwardResult(msg) {
-				continue
-			}
-			return
 		}
 	}
 }
@@ -59,10 +48,9 @@ func Skip[Msg any](n int) stream.Processor[Msg, Msg] {
 				count++
 				continue
 			}
-			if c.ForwardResult(msg) {
-				continue
+			if !c.ForwardResult(msg) {
+				return
 			}
-			return
 		}
 	}
 }
@@ -83,10 +71,9 @@ func SkipWhile[Msg any](pred Predicate[Msg]) stream.Processor[Msg, Msg] {
 			}
 			skipping = false
 
-			if c.ForwardResult(msg) {
-				continue
+			if !c.ForwardResult(msg) {
+				return
 			}
-			return
 		}
 	}
 }
@@ -109,10 +96,9 @@ func Distinct[Msg any](eq Equality[Msg]) stream.Processor[Msg, Msg] {
 			msgCopy := msg
 			last = &msgCopy
 
-			if c.ForwardResult(msg) {
-				continue
+			if !c.ForwardResult(msg) {
+				return
 			}
-			return
 		}
 	}
 }
@@ -137,10 +123,9 @@ func DistinctBy[Msg any, Key comparable](
 			}
 			lastKey = &key
 
-			if c.ForwardResult(msg) {
-				continue
+			if !c.ForwardResult(msg) {
+				return
 			}
-			return
 		}
 	}
 }

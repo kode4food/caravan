@@ -16,10 +16,9 @@ func ForEach[Msg any](fn Consumer[Msg]) stream.Processor[Msg, Msg] {
 			}
 
 			fn(msg)
-			if c.ForwardResult(msg) {
-				continue
+			if !c.ForwardResult(msg) {
+				return
 			}
-			return
 		}
 	}
 }
