@@ -36,23 +36,14 @@ func TakeWhile[Msg any](pred Predicate[Msg]) stream.Processor[Msg, Msg] {
 
 // Skip constructs a Processor that skips the first n messages
 func Skip[Msg any](n int) stream.Processor[Msg, Msg] {
-	return func(c *context.Context[Msg, Msg]) {
-		count := 0
-		for {
-			msg, ok := c.FetchMessage()
-			if !ok {
-				return
-			}
-
-			if count < n {
-				count++
-				continue
-			}
-			if !c.ForwardResult(msg) {
-				return
-			}
+	count := 0
+	return SkipWhile(func(_ Msg) bool {
+		if count < n {
+			count++
+			return true
 		}
-	}
+		return false
+	})
 }
 
 // SkipWhile constructs a Processor that skips messages until the predicate
@@ -108,24 +99,7 @@ func Distinct[Msg any](eq Equality[Msg]) stream.Processor[Msg, Msg] {
 func DistinctBy[Msg any, Key comparable](
 	fn KeySelector[Msg, Key],
 ) stream.Processor[Msg, Msg] {
-	return func(c *context.Context[Msg, Msg]) {
-		var lastKey *Key
-
-		for {
-			msg, ok := c.FetchMessage()
-			if !ok {
-				return
-			}
-
-			key := fn(msg)
-			if lastKey != nil && *lastKey == key {
-				continue
-			}
-			lastKey = &key
-
-			if !c.ForwardResult(msg) {
-				return
-			}
-		}
-	}
+	return Distinct(func(a, b Msg) bool {
+		return fn(a) == fn(b)
+	})
 }
