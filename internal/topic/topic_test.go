@@ -6,9 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/topic/config"
-
-	internal "github.com/kode4food/caravan/internal/topic"
 )
 
 func TestMakeTopicError(t *testing.T) {
@@ -16,13 +15,13 @@ func TestMakeTopicError(t *testing.T) {
 	defer func() {
 		as.Error(recover().(error))
 	}()
-	internal.Make[any](config.Permanent, config.Consumed)
+	caravan.NewTopic[any](config.Permanent, config.Consumed)
 }
 
 func TestLongLog(t *testing.T) {
 	as := assert.New(t)
 
-	l := internal.Make[any](config.Permanent)
+	l := caravan.NewTopic[any](config.Permanent)
 	p := l.NewProducer()
 	defer p.Close()
 
@@ -46,7 +45,7 @@ func TestLongLog(t *testing.T) {
 func TestConsumerReadsAllMessages(t *testing.T) {
 	as := assert.New(t)
 
-	l := internal.Make[any](config.Permanent)
+	l := caravan.NewTopic[any](config.Permanent)
 	p := l.NewProducer()
 	defer p.Close()
 	for i := 0; i < 100; i++ {
@@ -65,7 +64,7 @@ func TestLogDiscarding(t *testing.T) {
 	as := assert.New(t)
 
 	segmentSize := config.DefaultSegmentIncrement
-	l := internal.Make[any](config.Consumed)
+	l := caravan.NewTopic[any](config.Consumed)
 	p := l.NewProducer()
 	defer p.Close()
 
@@ -93,7 +92,7 @@ func TestLogDiscardEverything(t *testing.T) {
 	as := assert.New(t)
 
 	segmentSize := config.DefaultSegmentIncrement
-	l := internal.Make[any](config.Consumed)
+	l := caravan.NewTopic[any](config.Consumed)
 	p := l.NewProducer()
 	defer p.Close()
 

@@ -7,8 +7,6 @@ import (
 
 	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/stream/node"
-
-	internal "github.com/kode4food/caravan/internal/stream"
 )
 
 func TestSplit(t *testing.T) {
@@ -17,7 +15,7 @@ func TestSplit(t *testing.T) {
 	inTopic := caravan.NewTopic[int]()
 	outTopic := caravan.NewTopic[int]()
 
-	s := internal.Make(
+	s := caravan.BasicStream(
 		node.TopicConsumer(inTopic),
 		node.Split(
 			node.Bind(

@@ -7,8 +7,6 @@ import (
 
 	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/stream/node"
-
-	internal "github.com/kode4food/caravan/internal/stream"
 )
 
 func TestReduce(t *testing.T) {
@@ -17,7 +15,7 @@ func TestReduce(t *testing.T) {
 	inTopic := caravan.NewTopic[int]()
 	outTopic := caravan.NewTopic[int]()
 
-	s := internal.Make(
+	s := caravan.NewStream(
 		node.TopicConsumer(inTopic),
 		node.Subprocess(
 			node.Reduce(func(prev int, e int) int {
@@ -48,7 +46,7 @@ func TestReduceFrom(t *testing.T) {
 	inTopic := caravan.NewTopic[int]()
 	outTopic := caravan.NewTopic[int]()
 
-	s := internal.Make(
+	s := caravan.NewStream(
 		node.TopicConsumer(inTopic),
 		node.Subprocess(
 			node.ReduceFrom(func(prev int, e int) int {

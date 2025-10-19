@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	internal "github.com/kode4food/caravan/internal/table"
+	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/table"
 )
 
@@ -19,7 +19,7 @@ type tableRow struct {
 func TestUpdater(t *testing.T) {
 	as := assert.New(t)
 
-	tbl, err := internal.Make[string, any]("name", "age")
+	tbl, err := caravan.NewTable[string, any]("name", "age")
 	as.NotNil(tbl)
 	as.Nil(err)
 
@@ -27,7 +27,7 @@ func TestUpdater(t *testing.T) {
 	as.NotNil(getter)
 	as.Nil(err)
 
-	updater, err := internal.MakeUpdater(tbl,
+	updater, err := caravan.NewTableUpdater(tbl,
 		func(e *tableRow) string {
 			return e.key
 		},

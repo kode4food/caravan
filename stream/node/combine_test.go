@@ -10,12 +10,9 @@ import (
 
 	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/message"
-
 	"github.com/kode4food/caravan/stream"
 	"github.com/kode4food/caravan/stream/context"
 	"github.com/kode4food/caravan/stream/node"
-
-	internal "github.com/kode4food/caravan/internal/stream"
 )
 
 func TestEmptySubprocess(t *testing.T) {
@@ -81,7 +78,7 @@ func TestSubprocess(t *testing.T) {
 	inTopic := caravan.NewTopic[string]()
 	outTopic := caravan.NewTopic[string]()
 
-	s := internal.Make(
+	s := caravan.NewStream(
 		node.TopicConsumer(inTopic),
 		node.TopicProducer(outTopic),
 	).Start()
@@ -104,7 +101,7 @@ func TestStatefulSubprocess(t *testing.T) {
 	inTopic := caravan.NewTopic[int]()
 	outTopic := caravan.NewTopic[int]()
 
-	s := internal.Make(
+	s := caravan.NewStream(
 		node.TopicConsumer(inTopic),
 		node.Subprocess(
 			node.Forward[int],
@@ -136,7 +133,7 @@ func TestMerge(t *testing.T) {
 	inTopic := caravan.NewTopic[int]()
 	outTopic := caravan.NewTopic[int]()
 
-	s := internal.Make(
+	s := caravan.NewStream(
 		node.Merge(
 			node.Bind(
 				node.TopicConsumer(inTopic),
@@ -357,7 +354,7 @@ func TestJoin(t *testing.T) {
 	rightTopic := caravan.NewTopic[int]()
 	outTopic := caravan.NewTopic[int]()
 
-	s := internal.Make(
+	s := caravan.NewStream(
 		node.Join(
 			node.TopicConsumer(leftTopic),
 			node.TopicConsumer(rightTopic),
@@ -398,7 +395,7 @@ func TestJoinErrored(t *testing.T) {
 	inTopic := caravan.NewTopic[int]()
 	outTopic := caravan.NewTopic[int]()
 
-	s := internal.Make(
+	s := caravan.NewStream(
 		node.Join(
 			node.TopicConsumer(inTopic),
 			makeJoinError(errors.New("error")),

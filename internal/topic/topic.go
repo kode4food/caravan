@@ -32,9 +32,9 @@ type (
 )
 
 // Make instantiates a new internal Topic instance
-func Make[Msg any](o ...config.Option) topic.Topic[Msg] {
+func Make[Msg any](options ...config.Option) topic.Topic[Msg] {
 	cfg := &config.Config{}
-	withDefaults := append(o, config.Defaults)
+	withDefaults := append(options, config.Defaults)
 	if err := config.ApplyOptions(cfg, withDefaults...); err != nil {
 		panic(err)
 	}

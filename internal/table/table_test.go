@@ -6,15 +6,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/table"
-
-	internal "github.com/kode4food/caravan/internal/table"
 )
 
 func TestTable(t *testing.T) {
 	as := assert.New(t)
 
-	tbl, err := internal.Make[string, any]("name", "age")
+	tbl, err := caravan.NewTable[string, any]("name", "age")
 	as.NotNil(tbl)
 	as.Nil(err)
 
@@ -49,7 +48,9 @@ func TestTable(t *testing.T) {
 
 func TestBadTable(t *testing.T) {
 	as := assert.New(t)
-	tbl, err := internal.Make[string, any]("column-1", "column-2", "column-1")
+	tbl, err := caravan.NewTable[string, any](
+		"column-1", "column-2", "column-1",
+	)
 	as.Nil(tbl)
 	as.Errorf(err, table.ErrDuplicateColumnName, "column-1")
 }
@@ -57,7 +58,7 @@ func TestBadTable(t *testing.T) {
 func TestMissingColumn(t *testing.T) {
 	as := assert.New(t)
 
-	tbl, err := internal.Make[string, any]("column-1", "column-2")
+	tbl, err := caravan.NewTable[string, any]("column-1", "column-2")
 	as.NotNil(tbl)
 	as.Nil(err)
 
@@ -70,7 +71,7 @@ func TestMissingColumn(t *testing.T) {
 func TestCompetingSetters(t *testing.T) {
 	as := assert.New(t)
 
-	tbl, _ := internal.Make[string, any]("name", "age")
+	tbl, _ := caravan.NewTable[string, any]("name", "age")
 	allSetter, _ := tbl.Setter("name", "age")
 	getter, _ := tbl.Getter("name", "age")
 
@@ -103,7 +104,7 @@ func TestCompetingSetters(t *testing.T) {
 func TestBadSetter(t *testing.T) {
 	as := assert.New(t)
 
-	tbl, err := internal.Make[string, any]("column-1", "column-2")
+	tbl, err := caravan.NewTable[string, any]("column-1", "column-2")
 	as.NotNil(tbl)
 	as.Nil(err)
 
@@ -129,7 +130,7 @@ func TestBadSetter(t *testing.T) {
 func TestTableDelete(t *testing.T) {
 	as := assert.New(t)
 
-	tbl, err := internal.Make[string, string]("name", "city")
+	tbl, err := caravan.NewTable[string, string]("name", "city")
 	as.NotNil(tbl)
 	as.Nil(err)
 
@@ -165,7 +166,7 @@ func TestTableDelete(t *testing.T) {
 func TestTableKeys(t *testing.T) {
 	as := assert.New(t)
 
-	tbl, _ := internal.Make[string, int]("value")
+	tbl, _ := caravan.NewTable[string, int]("value")
 	setter, _ := tbl.Setter("value")
 
 	// Empty table
@@ -187,7 +188,7 @@ func TestTableKeys(t *testing.T) {
 func TestTableCount(t *testing.T) {
 	as := assert.New(t)
 
-	tbl, _ := internal.Make[int, string]("name")
+	tbl, _ := caravan.NewTable[int, string]("name")
 	setter, _ := tbl.Setter("name")
 
 	// Empty table
@@ -215,7 +216,7 @@ func TestTableCount(t *testing.T) {
 func TestTableRange(t *testing.T) {
 	as := assert.New(t)
 
-	tbl, _ := internal.Make[string, any]("name", "age")
+	tbl, _ := caravan.NewTable[string, any]("name", "age")
 	setter, _ := tbl.Setter("name", "age")
 
 	// Add rows
@@ -239,7 +240,7 @@ func TestTableRange(t *testing.T) {
 func TestTableRangeEarlyExit(t *testing.T) {
 	as := assert.New(t)
 
-	tbl, _ := internal.Make[int, string]("value")
+	tbl, _ := caravan.NewTable[int, string]("value")
 	setter, _ := tbl.Setter("value")
 
 	// Add rows

@@ -16,17 +16,17 @@ type Table[Key comparable, Value any] struct {
 }
 
 func Make[Key comparable, Value any](
-	c ...table.ColumnName,
+	cols ...table.ColumnName,
 ) (table.Table[Key, Value], error) {
-	if err := checkColumnDuplicates(c); err != nil {
+	if err := checkColumnDuplicates(cols); err != nil {
 		return nil, err
 	}
 	indexes := map[table.ColumnName]int{}
-	for i, n := range c {
+	for i, n := range cols {
 		indexes[n] = i
 	}
 	return &Table[Key, Value]{
-		names:   c,
+		names:   cols,
 		indexes: indexes,
 		rows:    map[Key][]Value{},
 	}, nil
@@ -37,9 +37,9 @@ func (t *Table[_, _]) Columns() []table.ColumnName {
 }
 
 func (t *Table[Key, Value]) Getter(
-	c ...table.ColumnName,
+	cols ...table.ColumnName,
 ) (table.Getter[Key, Value], error) {
-	indexes, err := t.columnIndexes(c)
+	indexes, err := t.columnIndexes(cols)
 	if err != nil {
 		return nil, err
 	}
@@ -59,13 +59,13 @@ func (t *Table[Key, Value]) Getter(
 }
 
 func (t *Table[Key, Value]) Setter(
-	c ...table.ColumnName,
+	cols ...table.ColumnName,
 ) (table.Setter[Key, Value], error) {
-	indexes, err := t.columnIndexes(c)
+	indexes, err := t.columnIndexes(cols)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkColumnDuplicates(c); err != nil {
+	if err := checkColumnDuplicates(cols); err != nil {
 		return nil, err
 	}
 

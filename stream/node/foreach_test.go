@@ -8,8 +8,6 @@ import (
 
 	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/stream/node"
-
-	internal "github.com/kode4food/caravan/internal/stream"
 )
 
 func TestForEach(t *testing.T) {
@@ -18,7 +16,7 @@ func TestForEach(t *testing.T) {
 	sum := 0
 	inTopic := caravan.NewTopic[int]()
 
-	s := internal.Make(
+	s := caravan.NewStream(
 		node.TopicConsumer(inTopic),
 		node.ForEach(func(m int) {
 			sum += m

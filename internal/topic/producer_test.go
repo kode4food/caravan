@@ -7,18 +7,18 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/closer"
+	"github.com/kode4food/caravan/debug"
 	"github.com/kode4food/caravan/message"
 	"github.com/kode4food/caravan/topic"
 	"github.com/kode4food/caravan/topic/config"
-
-	internal "github.com/kode4food/caravan/internal/topic"
 )
 
 func TestProducerClosed(t *testing.T) {
 	as := assert.New(t)
 
-	top := internal.Make[any]()
+	top := caravan.NewTopic[any]()
 	p := top.NewProducer()
 
 	p.Close()
@@ -30,16 +30,16 @@ func TestProducerClosed(t *testing.T) {
 }
 
 func TestProducerGC(t *testing.T) {
-	internal.Debug.Enable()
+	debug.Enable()
 
 	as := assert.New(t)
-	top := internal.Make[any]()
+	top := caravan.NewTopic[any]()
 	top.NewProducer()
 	runtime.GC()
 
 	errs := make(chan error)
 	go func() {
-		internal.Debug.WithConsumer(func(c topic.Consumer[error]) {
+		debug.WithConsumer(func(c topic.Consumer[error]) {
 			errs <- message.MustReceive(c)
 		})
 	}()
@@ -49,7 +49,7 @@ func TestProducerGC(t *testing.T) {
 func TestProducer(t *testing.T) {
 	as := assert.New(t)
 
-	top := internal.Make[any](config.Permanent)
+	top := caravan.NewTopic[any](config.Permanent)
 	as.NotNil(top)
 
 	p := top.NewProducer()
@@ -70,7 +70,7 @@ func TestProducer(t *testing.T) {
 func TestLateProducer(t *testing.T) {
 	as := assert.New(t)
 
-	top := internal.Make[any]()
+	top := caravan.NewTopic[any]()
 	p := top.NewProducer()
 
 	pc := p.Send()
@@ -97,7 +97,7 @@ func TestLateProducer(t *testing.T) {
 func TestProducerChannel(t *testing.T) {
 	as := assert.New(t)
 
-	top := internal.Make[any](config.Permanent)
+	top := caravan.NewTopic[any](config.Permanent)
 	as.NotNil(top)
 
 	p := top.NewProducer()
@@ -124,7 +124,7 @@ func TestProducerChannel(t *testing.T) {
 func TestProducerChannelClosed(t *testing.T) {
 	as := assert.New(t)
 
-	top := internal.Make[any]()
+	top := caravan.NewTopic[any]()
 	p := top.NewProducer()
 	ch := p.Send()
 	p.Close()

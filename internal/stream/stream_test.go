@@ -6,15 +6,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/stream"
 	"github.com/kode4food/caravan/stream/context"
 	"github.com/kode4food/caravan/stream/node"
-
-	internal "github.com/kode4food/caravan/internal/stream"
 )
 
 func makeGeneratingStream(value any) stream.Stream {
-	return internal.Make(
+	return caravan.NewStream(
 		node.Generate(func() (any, bool) { return value, true }),
 		node.Forward[any],
 	)
@@ -47,7 +46,7 @@ func TestStreamStop(t *testing.T) {
 func TestStreamMonitorStop(t *testing.T) {
 	as := assert.New(t)
 	var s stream.Running
-	s = internal.Make(
+	s = caravan.NewStream(
 		node.Generate(func() (any, bool) {
 			return "hello", true
 		}),
@@ -70,7 +69,7 @@ func TestStreamMonitorStop(t *testing.T) {
 func TestStreamRecoverableError(t *testing.T) {
 	as := assert.New(t)
 	var s stream.Running
-	s = internal.Make(
+	s = caravan.NewStream(
 		node.Generate(func() (any, bool) {
 			return "hello", true
 		}),
@@ -107,7 +106,7 @@ func TestStreamRecoverableError(t *testing.T) {
 func TestStreamFatalError(t *testing.T) {
 	as := assert.New(t)
 	var s stream.Running
-	s = internal.Make(
+	s = caravan.NewStream(
 		node.Generate(func() (any, bool) {
 			return "hello", true
 		}),
