@@ -4,7 +4,7 @@
 
 [![Go Report Card](https://img.shields.io/badge/go%20report-A+-brightgreen.svg)](https://goreportcard.com/report/github.com/kode4food/caravan) ![Build Status](https://github.com/kode4food/caravan/actions/workflows/build.yml/badge.svg) [![Code Coverage](https://qlty.sh/gh/kode4food/projects/caravan/coverage.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![Maintainability](https://qlty.sh/gh/kode4food/projects/caravan/maintainability.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![GitHub](https://img.shields.io/github/license/kode4food/caravan)](https://github.com/kode4food/caravan/blob/main/LICENSE.md)
 
-Caravan is a Go library that provides powerful primitives for building stream processing applications with integrated state management. It combines reactive stream processing with efficient table operations to enable real-time data transformations, aggregations, and stateful workflows.
+Caravan is a Go library that provides powerful primitives for building in-process streaming applications with integrated state management. It combines reactive stream processing with efficient table operations to enable real-time data transformations, aggregations, and stateful workflows.
 
 _This is a work in progress. The basics are there, but not yet ready for production use. Use at your own risk_
 
@@ -29,7 +29,7 @@ go get github.com/kode4food/caravan
 
 ### Topics
 
-Topics provide durable, FIFO message logs with independent consumer tracking:
+Topics provide in-process FIFO message logs with independent consumer tracking:
 
 ```go
 import "github.com/kode4food/caravan"
@@ -342,19 +342,3 @@ running := stream.StartWith(func(advice context.Advice, next func()) {
     }
 })
 ```
-
-## Examples
-
-See the [examples](./examples) directory for complete working examples:
-
-- [table_operations.go](./examples/table_operations.go) - Comprehensive table and stream integration examples
-
-## Documentation
-
-For detailed API documentation, see the [Go package documentation](https://pkg.go.dev/github.com/kode4food/caravan).
-
-## License
-
-Caravan is released under the [MIT License](./LICENSE.md).
-
-Copyright (c) 2021-2025 Thomas S. Bradford
