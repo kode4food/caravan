@@ -59,9 +59,7 @@ func producerDebugFinalizer[Msg any](
 	return func(p *producer[Msg]) {
 		select {
 		case <-p.IsClosed():
-			// already closed, nothing to do
 		default:
-			// not closed, report error
 			Debug.WithProducer(func(dp topic.Producer[error]) {
 				err := fmt.Errorf(topic.ErrProducerNotClosed, p.id)
 				dp.Send() <- wrap(err)

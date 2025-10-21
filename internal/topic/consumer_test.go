@@ -112,7 +112,7 @@ func TestLoadedConsumer(t *testing.T) {
 
 	top := caravan.NewTopic[any]()
 	p := top.NewProducer()
-	c := top.NewConsumer() // Create consumer BEFORE producing
+	c := top.NewConsumer()
 
 	for i := 0; i < 10000; i++ {
 		p.Send() <- i

@@ -3,29 +3,29 @@ package topic
 import "github.com/kode4food/caravan/closer"
 
 type Closer struct {
-	closed  chan struct{}
-	onClose func()
+	channel chan struct{}
+	close   func()
 }
 
-func makeCloser(onClose func()) closer.Closer {
+func makeCloser(close func()) closer.Closer {
 	return &Closer{
-		closed:  make(chan struct{}),
-		onClose: onClose,
+		channel: make(chan struct{}),
+		close:   close,
 	}
 }
 
 func (c *Closer) Close() {
 	select {
-	case <-c.closed:
+	case <-c.channel:
 		return
 	default:
-		close(c.closed)
-		if c.onClose != nil {
-			c.onClose()
+		close(c.channel)
+		if c.close != nil {
+			c.close()
 		}
 	}
 }
 
 func (c *Closer) IsClosed() <-chan struct{} {
-	return c.closed
+	return c.channel
 }
