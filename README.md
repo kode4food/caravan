@@ -17,7 +17,6 @@ _This is a work in progress. The basics are there, but not yet ready for product
 - **Backpressure** - Natural flow control through channel semantics
 - **Batch Operations** - Efficient batch updates for high-throughput scenarios
 - **Aggregations** - Stateful stream aggregations with table integration
-- **Flexible Retention** - Configurable retention policies (timed, counted, consumed)
 
 ## Installation
 
@@ -282,43 +281,6 @@ stream := caravan.NewStream(
         },
     ),
     node.TopicProducer(statsOut),
-)
-```
-
-## Topic Retention Policies
-
-Configure how long messages are retained in topics:
-
-```go
-import (
-    "github.com/kode4food/caravan"
-    "github.com/kode4food/caravan/topic/config"
-    "github.com/kode4food/caravan/topic/retention"
-)
-
-// Time-based retention (keep 1 hour)
-topic := caravan.NewTopic[string](
-    config.WithRetention(retention.Timed(1 * time.Hour)),
-)
-
-// Count-based retention (keep 1000 messages)
-topic := caravan.NewTopic[string](
-    config.WithRetention(retention.Counted(1000)),
-)
-
-// Consumed-based retention (keep until all consumers read)
-topic := caravan.NewTopic[string](
-    config.WithRetention(retention.Consumed()),
-)
-
-// Composed retention (keep 1000 messages OR 1 hour)
-topic := caravan.NewTopic[string](
-    config.WithRetention(
-        retention.Compose(
-            retention.Counted(1000),
-            retention.Timed(1 * time.Hour),
-        ),
-    ),
 )
 ```
 

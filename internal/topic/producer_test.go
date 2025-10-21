@@ -12,7 +12,6 @@ import (
 	"github.com/kode4food/caravan/debug"
 	"github.com/kode4food/caravan/message"
 	"github.com/kode4food/caravan/topic"
-	"github.com/kode4food/caravan/topic/config"
 )
 
 func TestProducerClosed(t *testing.T) {
@@ -49,7 +48,7 @@ func TestProducerGC(t *testing.T) {
 func TestProducer(t *testing.T) {
 	as := assert.New(t)
 
-	top := caravan.NewTopic[any](config.Permanent)
+	top := caravan.NewTopic[any]()
 	as.NotNil(top)
 
 	p := top.NewProducer()
@@ -97,7 +96,7 @@ func TestLateProducer(t *testing.T) {
 func TestProducerChannel(t *testing.T) {
 	as := assert.New(t)
 
-	top := caravan.NewTopic[any](config.Permanent)
+	top := caravan.NewTopic[any]()
 	as.NotNil(top)
 
 	p := top.NewProducer()

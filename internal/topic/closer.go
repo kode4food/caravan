@@ -1,39 +1,31 @@
 package topic
 
-import (
-	"sync"
+import "github.com/kode4food/caravan/closer"
 
-	"github.com/kode4food/caravan/closer"
-)
-
-// Closer is an internal implementation of a closer.Closer
 type Closer struct {
-	sync.Mutex
-	channel chan struct{}
-	close   func()
+	closed  chan struct{}
+	onClose func()
 }
 
-func makeCloser(close func()) closer.Closer {
+func makeCloser(onClose func()) closer.Closer {
 	return &Closer{
-		channel: make(chan struct{}),
-		close:   close,
+		closed:  make(chan struct{}),
+		onClose: onClose,
 	}
 }
 
-// Close will instruct the Closer to stop and free its resources
 func (c *Closer) Close() {
-	c.Lock()
-	defer c.Unlock()
 	select {
-	case <-c.channel:
+	case <-c.closed:
 		return
 	default:
-		close(c.channel)
-		c.close()
+		close(c.closed)
+		if c.onClose != nil {
+			c.onClose()
+		}
 	}
 }
 
-// IsClosed returns a channel that can participate in a select
 func (c *Closer) IsClosed() <-chan struct{} {
-	return c.channel
+	return c.closed
 }

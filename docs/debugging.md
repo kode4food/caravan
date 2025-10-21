@@ -48,7 +48,7 @@ func main() {
             }
         })
     }()
-    caravan.NewTopic().NewConsumer()
+    caravan.NewTopic[string]().NewConsumer()
     // This garbage collection call will trigger a debug
     // message related to not explicitly closing a Consumer
     runtime.GC()

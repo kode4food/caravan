@@ -12,12 +12,11 @@ import (
 
     "github.com/kode4food/caravan"
     "github.com/kode4food/caravan/stream/node"
-    "github.com/kode4food/caravan/topic/config"
 )
 
 func main() {
-    in := caravan.NewTopic[int](config.Consumed)
-    out := caravan.NewTopic[int](config.Permanent)
+    in := caravan.NewTopic[int]()
+    out := caravan.NewTopic[int]()
 
     s := caravan.NewStream(
         // Stream from the 'in' topic

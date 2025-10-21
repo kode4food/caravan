@@ -8,12 +8,11 @@ import (
 	"github.com/kode4food/caravan/stream/node"
 	"github.com/kode4food/caravan/table"
 	"github.com/kode4food/caravan/topic"
-	"github.com/kode4food/caravan/topic/config"
 )
 
 // NewTopic instantiates a new Topic
-func NewTopic[Msg any](options ...config.Option) topic.Topic[Msg] {
-	return topicImpl.Make[Msg](options...)
+func NewTopic[Msg any]() topic.Topic[Msg] {
+	return topicImpl.Make[Msg]()
 }
 
 // NewStream instantiates a new stream, given a set of Processors

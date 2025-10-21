@@ -9,11 +9,10 @@ import (
     "fmt"
 
     "github.com/kode4food/caravan"
-    "github.com/kode4food/caravan/topic/config"
 )
 
 func main() {
-    top := caravan.NewTopic[string](config.Permanent)
+    top := caravan.NewTopic[string]()
 
     // Send some stuff to the topic via its channel
     go func() {

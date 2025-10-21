@@ -3,10 +3,8 @@ package topic
 import (
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/kode4food/caravan/internal/sync/mutex"
-	"github.com/kode4food/caravan/topic/config"
 )
 
 type (
@@ -20,8 +18,7 @@ type (
 	}
 
 	logEntry[Msg any] struct {
-		msg       Msg
-		createdAt time.Time
+		msg Msg
 	}
 
 	headSegment[Msg any] struct {
@@ -46,14 +43,13 @@ type (
 	}
 
 	// retentionQuery is called by Log in order to determine if a segment
-	// should be retained or discarded. Such a function is provided by a
-	// Topic in order to apply a retention.Policy
+	// should be retained or discarded based on cursor positions
 	retentionQuery[Msg any] func(*segment[Msg]) bool
 )
 
-func makeLog[Msg any](cfg *config.Config) *Log[Msg] {
+func makeLog[Msg any](segmentSize uint32) *Log[Msg] {
 	return &Log[Msg]{
-		capIncrement: uint32(cfg.SegmentIncrement),
+		capIncrement: segmentSize,
 	}
 }
 
@@ -71,8 +67,7 @@ func (l *Log[_]) nextCapacity() uint32 {
 
 func (l *Log[Msg]) put(msg Msg) {
 	entry := &logEntry[Msg]{
-		msg:       msg,
-		createdAt: time.Now(),
+		msg: msg,
 	}
 
 	l.tail.Lock()
@@ -185,10 +180,4 @@ func (s *segment[_]) isActive() bool {
 
 func (s *segment[_]) isFull() bool {
 	return s.length() == s.cap
-}
-
-func (s *segment[_]) timeRange() (time.Time, time.Time) {
-	f := s.entries[0].createdAt
-	l := s.entries[s.length()-1].createdAt
-	return f, l
 }

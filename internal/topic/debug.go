@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/kode4food/caravan/topic"
-	"github.com/kode4food/caravan/topic/config"
 )
 
 type (
@@ -45,7 +44,7 @@ func (d *debugger) getDebugTopic() topic.Topic[error] {
 	d.Lock()
 	defer d.Unlock()
 	if d.topic == nil {
-		d.topic = Make[error](config.Consumed)
+		d.topic = Make[error]()
 	}
 	return d.topic
 }

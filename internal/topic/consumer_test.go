@@ -12,7 +12,6 @@ import (
 	"github.com/kode4food/caravan/debug"
 	"github.com/kode4food/caravan/message"
 	"github.com/kode4food/caravan/topic"
-	"github.com/kode4food/caravan/topic/config"
 )
 
 func TestConsumerClosed(t *testing.T) {
@@ -48,7 +47,7 @@ func TestConsumerGC(t *testing.T) {
 
 func TestEmptyConsumer(t *testing.T) {
 	as := assert.New(t)
-	top := caravan.NewTopic[any](config.Permanent)
+	top := caravan.NewTopic[any]()
 	c := top.NewConsumer()
 	e, ok := message.Poll(c, 0)
 	as.Nil(e)
@@ -59,7 +58,7 @@ func TestEmptyConsumer(t *testing.T) {
 func TestSingleConsumer(t *testing.T) {
 	as := assert.New(t)
 
-	top := caravan.NewTopic[any](config.Permanent)
+	top := caravan.NewTopic[any]()
 	as.NotNil(top)
 
 	p := top.NewProducer()
@@ -83,7 +82,7 @@ func TestSingleConsumer(t *testing.T) {
 func TestMultiConsumer(t *testing.T) {
 	as := assert.New(t)
 
-	top := caravan.NewTopic[any](config.Permanent)
+	top := caravan.NewTopic[any]()
 	as.NotNil(top)
 
 	p := top.NewProducer()
@@ -111,32 +110,26 @@ func TestMultiConsumer(t *testing.T) {
 func TestLoadedConsumer(t *testing.T) {
 	as := assert.New(t)
 
-	top := caravan.NewTopic[any](config.Permanent)
+	top := caravan.NewTopic[any]()
 	p := top.NewProducer()
+	c := top.NewConsumer() // Create consumer BEFORE producing
 
 	for i := 0; i < 10000; i++ {
 		p.Send() <- i
 	}
 
-	done := make(chan bool)
+	for i := 0; i < 10000; i++ {
+		as.Equal(i, message.MustReceive(c))
+	}
 
-	go func() {
-		c := top.NewConsumer()
-		for i := 0; i < 10000; i++ {
-			as.Equal(i, message.MustReceive(c))
-		}
-		c.Close()
-		done <- true
-	}()
-
-	<-done
+	c.Close()
 	p.Close()
 }
 
 func TestStreamingConsumer(t *testing.T) {
 	as := assert.New(t)
 
-	top := caravan.NewTopic[any](config.Consumed)
+	top := caravan.NewTopic[any]()
 	p := top.NewProducer()
 	c := top.NewConsumer()
 
@@ -181,7 +174,7 @@ func TestConsumerClosedDuringPoll(t *testing.T) {
 func TestConsumerChannel(t *testing.T) {
 	as := assert.New(t)
 
-	top := caravan.NewTopic[any](config.Permanent)
+	top := caravan.NewTopic[any]()
 	as.NotNil(top)
 
 	p := top.NewProducer()

@@ -2,26 +2,22 @@ package topic
 
 import (
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/kode4food/caravan/closer"
 	"github.com/kode4food/caravan/internal/sync/channel"
 	"github.com/kode4food/caravan/topic"
-	"github.com/kode4food/caravan/topic/backoff"
-	"github.com/kode4food/caravan/topic/config"
-	"github.com/kode4food/caravan/topic/retention"
 )
 
 type (
 	// Topic is the internal implementation of a Topic
 	Topic[Msg any] struct {
-		*config.Config
-		retentionState retention.State
-		log            *Log[Msg]
-		cursors        *cursors[Msg]
-		observers      *topicObservers
-		vacuumReady    *channel.ReadyWait
+		closer.Closer
+		log         *Log[Msg]
+		cursors     *cursors[Msg]
+		observers   *topicObservers
+		vacuumReady *channel.ReadyWait
 	}
 
 	// topicObservers manages a set of callbacks for observers of a Topic
@@ -31,24 +27,22 @@ type (
 	}
 )
 
+const defaultSegmentSize = 256
+
 // Make instantiates a new internal Topic instance
-func Make[Msg any](options ...config.Option) topic.Topic[Msg] {
-	cfg := &config.Config{}
-	withDefaults := append(options, config.Defaults)
-	if err := config.ApplyOptions(cfg, withDefaults...); err != nil {
-		panic(err)
+func Make[Msg any]() topic.Topic[Msg] {
+	t := &Topic[Msg]{
+		cursors:   makeCursors[Msg](),
+		observers: makeLogObservers(),
+		log:       makeLog[Msg](defaultSegmentSize),
 	}
-
-	res := &Topic[Msg]{
-		Config:         cfg,
-		retentionState: cfg.RetentionPolicy.InitialState(),
-		cursors:        makeCursors[Msg](),
-		observers:      makeLogObservers(),
-		log:            makeLog[Msg](cfg),
-	}
-
-	res.startVacuuming()
-	return res
+	t.Closer = makeCloser(func() {
+		if t.vacuumReady != nil {
+			t.vacuumReady.Close()
+		}
+	})
+	t.startVacuuming()
+	return t
 }
 
 // Length returns the virtual size of the Topic
@@ -63,7 +57,7 @@ func (t *Topic[Msg]) NewProducer() topic.Producer[Msg] {
 
 // NewConsumer instantiates a new Topic Consumer
 func (t *Topic[Msg]) NewConsumer() topic.Consumer[Msg] {
-	return makeConsumer(t.makeCursor(), t.BackoffGenerator)
+	return makeConsumer(t.makeCursor())
 }
 
 // get consumes a message starting at the specified virtual Offset within the
@@ -81,10 +75,6 @@ func (t *Topic[Msg]) put(msg Msg) {
 	t.notifyObservers()
 }
 
-func (t *Topic[_]) isClosed() bool {
-	return false
-}
-
 func (t *Topic[_]) startVacuuming() {
 	vacuumID := uuid.New()
 	ready := channel.MakeReadyWait()
@@ -92,53 +82,32 @@ func (t *Topic[_]) startVacuuming() {
 	t.observers.add(vacuumID, ready.Notify)
 
 	go func() {
-		b := backoff.DefaultGenerator
-		next := b()
-		for !t.isClosed() {
+		for {
 			select {
-			case <-time.After(next()):
+			case <-t.IsClosed():
+				return
 			case <-ready.Wait():
-			}
-			if t.log.canVacuum() {
-				t.vacuum()
-				next = b()
+				if t.log.canVacuum() {
+					t.vacuum()
+				}
 			}
 		}
 	}()
 }
 
 func (t *Topic[Msg]) vacuum() {
-	baseStats := t.baseRetentionStatistics()
+	offsets := t.cursors.offsets()
 	t.log.vacuum(func(e *segment[Msg]) bool {
 		start := t.log.start()
-		firstTimestamp, lastTimestamp := e.timeRange()
-		stats := *baseStats()
-		stats.Entries = &retention.EntriesStatistics{
-			FirstOffset:    start,
-			LastOffset:     start + uint64(e.length()-1),
-			FirstTimestamp: firstTimestamp,
-			LastTimestamp:  lastTimestamp,
-		}
-		s, r := t.RetentionPolicy.Retain(t.retentionState, &stats)
-		t.retentionState = s
-		return r
-	})
-}
+		lastOffset := start + uint64(e.length()-1)
 
-func (t *Topic[_]) baseRetentionStatistics() func() *retention.Statistics {
-	var base *retention.Statistics
-	return func() *retention.Statistics {
-		if base == nil {
-			base = &retention.Statistics{
-				CurrentTime: time.Now(),
-				Log: &retention.LogStatistics{
-					Length:        t.log.length(),
-					CursorOffsets: t.cursors.offsets(),
-				},
+		for _, o := range offsets {
+			if o <= lastOffset {
+				return true
 			}
 		}
-		return base
-	}
+		return false
+	})
 }
 
 func (t *Topic[Msg]) makeCursor() *cursor[Msg] {
