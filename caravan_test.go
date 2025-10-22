@@ -131,10 +131,7 @@ func TestNewTableUpdater(t *testing.T) {
 
 	// Create column selector
 	valueColumn := table.MakeColumn[Message, int](
-		"value",
-		table.ValueSelector[Message, int](func(msg Message) int {
-			return msg.Value
-		}),
+		"value", func(msg Message) int { return msg.Value },
 	)
 
 	// Create updater

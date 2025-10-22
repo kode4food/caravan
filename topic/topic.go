@@ -26,9 +26,3 @@ type (
 	// the Topic
 	Consumer[Msg any] message.ClosingReceiver[Msg]
 )
-
-// Error messages
-const (
-	ErrConsumerNotClosed = "consumer finalized without being closed: %s"
-	ErrProducerNotClosed = "producer finalized without being closed: %s"
-)

@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"fmt"
 	"log/slog"
 	"runtime"
 
@@ -15,6 +16,10 @@ type producer[Msg any] struct {
 	topic   *Topic[Msg]
 	channel chan Msg
 }
+
+const (
+	ErrProducerNotClosed = "producer finalized without being closed: %s"
+)
 
 func makeProducer[Msg any](t *Topic[Msg]) *producer[Msg] {
 	ch := startProducer(t)
@@ -52,6 +57,6 @@ func producerDebugFinalizer[Msg any](p *producer[Msg]) {
 	select {
 	case <-p.IsClosed():
 	default:
-		slog.Debug("producer not closed before garbage collection", "id", p.id)
+		slog.Debug(fmt.Sprintf(ErrProducerNotClosed, p.id))
 	}
 }

@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"fmt"
 	"log/slog"
 	"runtime"
 
@@ -12,6 +13,10 @@ type consumer[Msg any] struct {
 	id      uuid.UUID
 	channel chan Msg
 }
+
+const (
+	ErrConsumerNotClosed = "consumer finalized without being closed: %s"
+)
 
 func makeConsumer[Msg any](c *cursor[Msg]) *consumer[Msg] {
 	res := &consumer[Msg]{
@@ -66,6 +71,6 @@ func consumerDebugFinalizer[Msg any](c *consumer[Msg]) {
 	select {
 	case <-c.IsClosed():
 	default:
-		slog.Debug("consumer not closed before garbage collection", "id", c.id)
+		slog.Debug(fmt.Sprintf(ErrConsumerNotClosed, c.id))
 	}
 }
