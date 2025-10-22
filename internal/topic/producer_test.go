@@ -44,7 +44,7 @@ func TestProducerGC(t *testing.T) {
 
 	select {
 	case r := <-h.Logs:
-		as.Contains(r.Message, "producer not closed")
+		as.Contains(r.Message, "producer finalized without being closed")
 	case <-time.After(time.Second):
 		t.Fatal("timeout waiting for debug log")
 	}
