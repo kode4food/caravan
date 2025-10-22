@@ -9,7 +9,7 @@ import (
 
 // Table is the internal implementation of a table.Table
 type Table[Key comparable, Value any] struct {
-	sync.RWMutex
+	mu      sync.RWMutex
 	names   []table.ColumnName
 	indexes map[table.ColumnName]int
 	rows    map[Key][]Value
@@ -44,8 +44,8 @@ func (t *Table[Key, Value]) Getter(
 		return nil, err
 	}
 	return func(k Key) ([]Value, error) {
-		t.RLock()
-		defer t.RUnlock()
+		t.mu.RLock()
+		defer t.mu.RUnlock()
 
 		if e, ok := t.rows[k]; ok {
 			res := make([]Value, len(indexes))
@@ -70,8 +70,8 @@ func (t *Table[Key, Value]) Setter(
 	}
 
 	return func(k Key, v ...Value) error {
-		t.Lock()
-		defer t.Unlock()
+		t.mu.Lock()
+		defer t.mu.Unlock()
 
 		if len(v) != len(indexes) {
 			return fmt.Errorf(
@@ -103,8 +103,8 @@ func (t *Table[_, _]) columnIndexes(c []table.ColumnName) ([]int, error) {
 }
 
 func (t *Table[Key, Value]) Delete(k Key) error {
-	t.Lock()
-	defer t.Unlock()
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	if _, ok := t.rows[k]; !ok {
 		return fmt.Errorf(table.ErrKeyNotFoundDelete, k)
@@ -114,8 +114,8 @@ func (t *Table[Key, Value]) Delete(k Key) error {
 }
 
 func (t *Table[Key, Value]) Keys() []Key {
-	t.RLock()
-	defer t.RUnlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
 	keys := make([]Key, 0, len(t.rows))
 	for k := range t.rows {
@@ -125,14 +125,14 @@ func (t *Table[Key, Value]) Keys() []Key {
 }
 
 func (t *Table[_, _]) Count() int {
-	t.RLock()
-	defer t.RUnlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return len(t.rows)
 }
 
 func (t *Table[Key, Value]) Range(fn func(Key, []Value) bool) {
-	t.RLock()
-	defer t.RUnlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
 	for k, v := range t.rows {
 		// Make a copy of the row to avoid holding the lock during callback

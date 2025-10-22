@@ -18,7 +18,7 @@ type (
 
 	// Running is the internal implementation of a stream.Running
 	Running[In, Out any] struct {
-		sync.Mutex
+		mu      sync.Mutex
 		*Stream[In, Out]
 		monitor chan context.Advice
 		done    chan context.Done
@@ -108,8 +108,8 @@ func (r *Running[_, _]) handleAdvice(a context.Advice, _ func()) {
 
 // IsRunning returns whether the stream is actively running
 func (r *Running[_, _]) IsRunning() bool {
-	r.Lock()
-	defer r.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	return r.isRunning()
 }
 
@@ -124,8 +124,8 @@ func (r *Running[_, _]) isRunning() bool {
 
 // Stop the stream if it's running
 func (r *Running[_, _]) Stop() error {
-	r.Lock()
-	defer r.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	if !r.isRunning() {
 		return errors.New(stream.ErrAlreadyStopped)

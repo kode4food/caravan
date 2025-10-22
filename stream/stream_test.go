@@ -1,19 +1,24 @@
 package stream_test
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/kode4food/caravan/debug"
-
+	testutil "github.com/kode4food/caravan/internal/testing"
 	"github.com/kode4food/caravan/stream"
 	"github.com/kode4food/caravan/stream/context"
 )
 
 func TestProcessorStart(t *testing.T) {
 	as := assert.New(t)
+
+	h := testutil.NewTestSlogHandler()
+	oldHandler := slog.Default()
+	slog.SetDefault(slog.New(h))
+	defer slog.SetDefault(oldHandler)
 
 	p := stream.Processor[string, string](
 		func(c *context.Context[string, string]) {
@@ -28,16 +33,12 @@ func TestProcessorStart(t *testing.T) {
 	)
 
 	p.Start(c)
-	if debug.IsEnabled() {
-		a, ok := (<-monitor).(*context.Debug)
-		as.NotNil(a)
-		as.True(ok)
-	} else {
-		select {
-		case <-monitor:
-			as.Fail("should not have monitor advice")
-		default:
-			// all good
-		}
+	time.Sleep(50 * time.Millisecond)
+
+	select {
+	case r := <-h.Logs:
+		as.Contains(r.Message, stream.ErrReturnedLate)
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for debug log")
 	}
 }

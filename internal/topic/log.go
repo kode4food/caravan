@@ -22,12 +22,12 @@ type (
 	}
 
 	headSegment[Msg any] struct {
-		sync.RWMutex
+		mu      sync.RWMutex
 		segment *segment[Msg]
 	}
 
 	tailSegment[Msg any] struct {
-		sync.Mutex
+		mu      sync.Mutex
 		segment *segment[Msg]
 	}
 
@@ -70,12 +70,12 @@ func (l *Log[Msg]) put(msg Msg) {
 		msg: msg,
 	}
 
-	l.tail.Lock()
-	defer l.tail.Unlock()
+	l.tail.mu.Lock()
+	defer l.tail.mu.Unlock()
 	tail := l.tail.segment
 	if tail == nil {
-		l.head.Lock()
-		defer l.head.Unlock()
+		l.head.mu.Lock()
+		defer l.head.mu.Unlock()
 		tail = l.makeSegment()
 		l.head.segment = tail
 		l.tail.segment = tail
@@ -96,10 +96,10 @@ func (l *Log[Msg]) makeSegment() *segment[Msg] {
 }
 
 func (l *Log[Msg]) get(o uint64) (*logEntry[Msg], uint64, bool) {
-	l.head.RLock()
+	l.head.mu.RLock()
 	o, pos := l.relativePos(o)
 	curr := l.head.segment
-	l.head.RUnlock()
+	l.head.mu.RUnlock()
 
 	for ; curr != nil && pos >= uint64(curr.cap); curr = curr.getNext() {
 		pos -= uint64(curr.cap)
@@ -122,8 +122,8 @@ func (l *Log[_]) relativePos(o uint64) (uint64, uint64) {
 }
 
 func (l *Log[_]) canVacuum() bool {
-	l.head.RLock()
-	defer l.head.RUnlock()
+	l.head.mu.RLock()
+	defer l.head.mu.RUnlock()
 	if head := l.head.segment; head != nil {
 		return !head.isActive()
 	}
@@ -131,22 +131,22 @@ func (l *Log[_]) canVacuum() bool {
 }
 
 func (l *Log[Msg]) vacuum(retain retentionQuery[Msg]) {
-	l.head.Lock()
-	defer l.head.Unlock()
+	l.head.mu.Lock()
+	defer l.head.mu.Unlock()
 
 	for curr := l.head.segment; curr != nil; {
 		if curr.isActive() || retain(curr) {
-			return // stop as soon as we see an active or retained segment
+			return
 		}
 		l.startOffset += uint64(curr.cap)
 		if curr = curr.getNext(); curr != nil {
 			l.head.segment = curr
 			continue
 		}
-		l.tail.Lock()
+		l.tail.mu.Lock()
 		l.head.segment = nil
 		l.tail.segment = nil
-		l.tail.Unlock()
+		l.tail.mu.Unlock()
 		return
 	}
 }

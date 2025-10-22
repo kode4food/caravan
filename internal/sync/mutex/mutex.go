@@ -8,7 +8,7 @@ import (
 // InitialMutex is a mutex that can eventually be bypassed. Good for structures
 // that are initially mutable, but thereafter read-only.
 type InitialMutex struct {
-	sync.Mutex
+	mu    sync.Mutex
 	state int32
 }
 
@@ -27,11 +27,11 @@ func (m *InitialMutex) DisableLock() {
 		return
 	case Locked:
 		atomic.StoreInt32(&m.state, Disabled)
-		m.Mutex.Unlock()
+		m.mu.Unlock()
 	case Unlocked:
-		m.Mutex.Lock()
+		m.mu.Lock()
 		atomic.StoreInt32(&m.state, Disabled)
-		m.Mutex.Unlock()
+		m.mu.Unlock()
 	}
 }
 
@@ -45,9 +45,9 @@ func (m *InitialMutex) Lock() {
 	if atomic.LoadInt32(&m.state) == Disabled {
 		return
 	}
-	m.Mutex.Lock()
+	m.mu.Lock()
 	if atomic.LoadInt32(&m.state) == Disabled {
-		m.Mutex.Unlock()
+		m.mu.Unlock()
 		return
 	}
 	atomic.StoreInt32(&m.state, Locked)
@@ -57,6 +57,6 @@ func (m *InitialMutex) Lock() {
 func (m *InitialMutex) Unlock() {
 	if atomic.LoadInt32(&m.state) == Locked {
 		atomic.StoreInt32(&m.state, Unlocked)
-		m.Mutex.Unlock()
+		m.mu.Unlock()
 	}
 }

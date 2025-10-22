@@ -1,6 +1,7 @@
 package topic_test
 
 import (
+	"log/slog"
 	"runtime"
 	"testing"
 	"time"
@@ -9,9 +10,8 @@ import (
 
 	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/closer"
-	"github.com/kode4food/caravan/debug"
+	testutil "github.com/kode4food/caravan/internal/testing"
 	"github.com/kode4food/caravan/message"
-	"github.com/kode4food/caravan/topic"
 )
 
 func TestConsumerClosed(t *testing.T) {
@@ -28,21 +28,25 @@ func TestConsumerClosed(t *testing.T) {
 }
 
 func TestConsumerGC(t *testing.T) {
-	debug.Enable()
-
 	as := assert.New(t)
+
+	h := testutil.NewTestSlogHandler()
+	oldHandler := slog.Default()
+	slog.SetDefault(slog.New(h))
+	defer slog.SetDefault(oldHandler)
+
 	top := caravan.NewTopic[any]()
 	top.NewConsumer()
 	runtime.GC()
+	runtime.GC()
+	time.Sleep(50 * time.Millisecond)
 
-	errs := make(chan error)
-	go func() {
-		debug.WithConsumer(func(c topic.Consumer[error]) {
-			e, _ := message.Receive(c)
-			errs <- e
-		})
-	}()
-	as.Error(<-errs)
+	select {
+	case r := <-h.Logs:
+		as.Contains(r.Message, "consumer not closed")
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for debug log")
+	}
 }
 
 func TestEmptyConsumer(t *testing.T) {

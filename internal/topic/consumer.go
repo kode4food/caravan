@@ -1,12 +1,10 @@
 package topic
 
 import (
-	"fmt"
+	"log/slog"
 	"runtime"
 
 	"github.com/google/uuid"
-
-	"github.com/kode4food/caravan/topic"
 )
 
 type consumer[Msg any] struct {
@@ -21,11 +19,7 @@ func makeConsumer[Msg any](c *cursor[Msg]) *consumer[Msg] {
 		id:      c.id,
 		channel: startConsumer(c),
 	}
-
-	if Debug.IsEnabled() {
-		wrap := WrapStackTrace(MsgInstantiationTrace)
-		runtime.SetFinalizer(res, consumerDebugFinalizer[Msg](wrap))
-	}
+	runtime.SetFinalizer(res, consumerDebugFinalizer[Msg])
 	return res
 }
 
@@ -68,17 +62,10 @@ func startConsumer[Msg any](c *cursor[Msg]) chan Msg {
 	return ch
 }
 
-func consumerDebugFinalizer[Msg any](
-	wrap ErrorWrapper,
-) func(c *consumer[Msg]) {
-	return func(c *consumer[Msg]) {
-		select {
-		case <-c.IsClosed():
-		default:
-			Debug.WithProducer(func(dp topic.Producer[error]) {
-				err := fmt.Errorf(topic.ErrConsumerNotClosed, c.id)
-				dp.Send() <- wrap(err)
-			})
-		}
+func consumerDebugFinalizer[Msg any](c *consumer[Msg]) {
+	select {
+	case <-c.IsClosed():
+	default:
+		slog.Debug("consumer not closed before garbage collection", "id", c.id)
 	}
 }

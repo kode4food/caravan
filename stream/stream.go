@@ -1,9 +1,8 @@
 package stream
 
 import (
+	"log/slog"
 	"time"
-
-	"github.com/kode4food/caravan/debug"
 
 	"github.com/kode4food/caravan/stream/context"
 )
@@ -58,17 +57,12 @@ const (
 
 // Start begins the Processor in a new go routine, logging any abnormalities
 func (p Processor[In, Out]) Start(c *context.Context[In, Out]) {
-	if !debug.IsEnabled() {
-		go p(c)
-		return
-	}
-
 	go func() {
 		start := time.Now().UnixNano() / int64(time.Millisecond)
 		p(c)
 		end := time.Now().UnixNano() / int64(time.Millisecond)
 		if end-start > 1 && !c.IsDone() {
-			c.Debugf(ErrReturnedLate)
+			slog.Debug(ErrReturnedLate)
 		}
 	}()
 }

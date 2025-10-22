@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 
@@ -34,7 +35,7 @@ func makeCursor[Msg any](t *Topic[Msg]) *cursor[Msg] {
 		ready.Notify()
 	}
 
-	return &cursor[Msg]{
+	res := &cursor[Msg]{
 		id:    cID,
 		topic: t,
 		ready: ready,
@@ -44,6 +45,8 @@ func makeCursor[Msg any](t *Topic[Msg]) *cursor[Msg] {
 			t.observers.remove(cID)
 		}),
 	}
+	runtime.SetFinalizer(res, cursorFinalizer[Msg])
+	return res
 }
 
 func (c *cursor[Msg]) head() (Msg, bool) {
@@ -90,4 +93,12 @@ func (c *cursors[_]) offsets() []uint64 {
 		res = append(res, off)
 	}
 	return res
+}
+
+func cursorFinalizer[Msg any](c *cursor[Msg]) {
+	select {
+	case <-c.IsClosed():
+	default:
+		c.Close()
+	}
 }

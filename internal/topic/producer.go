@@ -1,13 +1,12 @@
 package topic
 
 import (
-	"fmt"
+	"log/slog"
 	"runtime"
 
 	"github.com/google/uuid"
 
 	"github.com/kode4food/caravan/closer"
-	"github.com/kode4food/caravan/topic"
 )
 
 type producer[Msg any] struct {
@@ -27,11 +26,7 @@ func makeProducer[Msg any](t *Topic[Msg]) *producer[Msg] {
 			close(ch)
 		}),
 	}
-
-	if Debug.IsEnabled() {
-		wrap := WrapStackTrace(MsgInstantiationTrace)
-		runtime.SetFinalizer(res, producerDebugFinalizer[Msg](wrap))
-	}
+	runtime.SetFinalizer(res, producerDebugFinalizer[Msg])
 	return res
 }
 
@@ -53,17 +48,10 @@ func startProducer[Msg any](t *Topic[Msg]) chan Msg {
 	return ch
 }
 
-func producerDebugFinalizer[Msg any](
-	wrap ErrorWrapper,
-) func(*producer[Msg]) {
-	return func(p *producer[Msg]) {
-		select {
-		case <-p.IsClosed():
-		default:
-			Debug.WithProducer(func(dp topic.Producer[error]) {
-				err := fmt.Errorf(topic.ErrProducerNotClosed, p.id)
-				dp.Send() <- wrap(err)
-			})
-		}
+func producerDebugFinalizer[Msg any](p *producer[Msg]) {
+	select {
+	case <-p.IsClosed():
+	default:
+		slog.Debug("producer not closed before garbage collection", "id", p.id)
 	}
 }

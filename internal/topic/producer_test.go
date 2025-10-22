@@ -1,6 +1,7 @@
 package topic_test
 
 import (
+	"log/slog"
 	"runtime"
 	"testing"
 	"time"
@@ -9,9 +10,8 @@ import (
 
 	"github.com/kode4food/caravan"
 	"github.com/kode4food/caravan/closer"
-	"github.com/kode4food/caravan/debug"
+	testutil "github.com/kode4food/caravan/internal/testing"
 	"github.com/kode4food/caravan/message"
-	"github.com/kode4food/caravan/topic"
 )
 
 func TestProducerClosed(t *testing.T) {
@@ -29,20 +29,25 @@ func TestProducerClosed(t *testing.T) {
 }
 
 func TestProducerGC(t *testing.T) {
-	debug.Enable()
-
 	as := assert.New(t)
+
+	h := testutil.NewTestSlogHandler()
+	oldHandler := slog.Default()
+	slog.SetDefault(slog.New(h))
+	defer slog.SetDefault(oldHandler)
+
 	top := caravan.NewTopic[any]()
 	top.NewProducer()
 	runtime.GC()
+	runtime.GC()
+	time.Sleep(50 * time.Millisecond)
 
-	errs := make(chan error)
-	go func() {
-		debug.WithConsumer(func(c topic.Consumer[error]) {
-			errs <- message.MustReceive(c)
-		})
-	}()
-	as.Error(<-errs)
+	select {
+	case r := <-h.Logs:
+		as.Contains(r.Message, "producer not closed")
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for debug log")
+	}
 }
 
 func TestProducer(t *testing.T) {
