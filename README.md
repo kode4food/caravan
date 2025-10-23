@@ -292,15 +292,17 @@ Streams provide flexible error handling through the advice system:
 stream := caravan.NewStream(/* ... */)
 
 running := stream.StartWith(func(advice context.Advice, next func()) {
-    switch advice.Type() {
-    case context.ErrorAdvice:
-        log.Printf("Recoverable error: %v", advice.Error())
-        next() // Continue processing
-    case context.FatalAdvice:
-        log.Printf("Fatal error: %v", advice.Error())
-        // Don't call next() to stop processing
-    default:
-        next()
+    switch a := advice.(type) {
+    case *context.Error:
+        log.Printf("Recoverable error: %v", a)
+        // Error is logged but processing continues
+    case *context.Fatal:
+        log.Printf("Fatal error: %v", a)
+        _ = running.Stop() // Fatal stops the processor
+    case *context.Debug:
+        log.Printf("Debug: %v", a)
+    case context.Stop:
+        _ = running.Stop() // Stop advises processor to stop
     }
 })
 ```
