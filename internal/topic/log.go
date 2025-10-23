@@ -15,6 +15,7 @@ type (
 		startOffset   uint64
 		virtualLength uint64
 		capIncrement  uint32
+		segmentPool   sync.Pool
 	}
 
 	logEntry[Msg any] struct {
@@ -48,9 +49,13 @@ type (
 )
 
 func makeLog[Msg any](segmentSize uint32) *Log[Msg] {
-	return &Log[Msg]{
+	l := &Log[Msg]{
 		capIncrement: segmentSize,
 	}
+	l.segmentPool.New = func() any {
+		return l.newSegment()
+	}
+	return l
 }
 
 func (l *Log[_]) start() uint64 {
@@ -59,10 +64,6 @@ func (l *Log[_]) start() uint64 {
 
 func (l *Log[_]) length() uint64 {
 	return atomic.LoadUint64(&l.virtualLength)
-}
-
-func (l *Log[_]) nextCapacity() uint32 {
-	return l.capIncrement
 }
 
 func (l *Log[Msg]) put(msg Msg) {
@@ -76,7 +77,7 @@ func (l *Log[Msg]) put(msg Msg) {
 	if tail == nil {
 		l.head.mu.Lock()
 		defer l.head.mu.Unlock()
-		tail = l.makeSegment()
+		tail = l.getSegment()
 		l.head.segment = tail
 		l.tail.segment = tail
 	}
@@ -86,13 +87,25 @@ func (l *Log[Msg]) put(msg Msg) {
 	atomic.AddUint64(&l.virtualLength, uint64(1))
 }
 
-func (l *Log[Msg]) makeSegment() *segment[Msg] {
-	c := l.nextCapacity()
+func (l *Log[Msg]) getSegment() *segment[Msg] {
+	s := l.segmentPool.Get().(*segment[Msg])
+	s.next = nil
+	s.len = 0
+	s.mu.Reset()
+	return s
+}
+
+func (l *Log[Msg]) newSegment() *segment[Msg] {
+	c := l.capIncrement
 	return &segment[Msg]{
 		log:     l,
 		cap:     c,
 		entries: make([]*logEntry[Msg], c),
 	}
+}
+
+func (l *Log[Msg]) returnSegment(s *segment[Msg]) {
+	l.segmentPool.Put(s)
 }
 
 func (l *Log[Msg]) get(o uint64) (*logEntry[Msg], uint64, bool) {
@@ -138,15 +151,18 @@ func (l *Log[Msg]) vacuum(retain retentionQuery[Msg]) {
 		if curr.isActive() || retain(curr) {
 			return
 		}
+		ret := curr
 		l.startOffset += uint64(curr.cap)
 		if curr = curr.getNext(); curr != nil {
 			l.head.segment = curr
+			l.returnSegment(ret)
 			continue
 		}
 		l.tail.mu.Lock()
 		l.head.segment = nil
 		l.tail.segment = nil
 		l.tail.mu.Unlock()
+		l.returnSegment(ret)
 		return
 	}
 }
@@ -161,7 +177,7 @@ func (s *segment[Msg]) append(entry *logEntry[Msg]) *segment[Msg] {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.len == s.cap {
-		s.next = s.log.makeSegment()
+		s.next = s.log.getSegment()
 		s.mu.DisableLock()
 		return s.next.append(entry)
 	}

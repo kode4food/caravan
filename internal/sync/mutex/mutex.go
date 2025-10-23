@@ -60,3 +60,10 @@ func (m *InitialMutex) Unlock() {
 		m.mu.Unlock()
 	}
 }
+
+// Reset places the InitialMutex back in its initial unlocked, enabled state
+func (m *InitialMutex) Reset() {
+	if atomic.LoadInt32(&m.state) == Disabled {
+		atomic.StoreInt32(&m.state, Unlocked)
+	}
+}
