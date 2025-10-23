@@ -163,8 +163,8 @@ func TestDistinct(t *testing.T) {
 
 func TestDistinctBy(t *testing.T) {
 	type Person struct {
-		ID   int
 		Name string
+		ID   int
 	}
 
 	in := caravan.NewTopic[Person]()

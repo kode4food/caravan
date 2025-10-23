@@ -14,8 +14,8 @@ import (
 type Order struct {
 	ID     string
 	UserID string
-	Amount int
 	Status string
+	Amount int
 }
 
 type UserStats struct {

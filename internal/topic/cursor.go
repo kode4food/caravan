@@ -14,17 +14,17 @@ import (
 type (
 	// cursors manages a set of cursors on behalf of a Topic
 	cursors[Msg any] struct {
-		sync.RWMutex
 		cursors map[uuid.UUID]*cursor[Msg]
+		mu      sync.RWMutex
 	}
 
 	// cursor is used to consume log entries
 	cursor[Msg any] struct {
 		closer.Closer
-		id     uuid.UUID
 		topic  *Topic[Msg]
 		ready  *channel.ReadyWait
 		offset uint64
+		id     uuid.UUID
 	}
 )
 
@@ -70,8 +70,8 @@ func makeCursors[Msg any]() *cursors[Msg] {
 }
 
 func (c *cursors[Msg]) track(cursor *cursor[Msg]) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	i := cursor.id
 	if _, ok := c.cursors[i]; !ok {
 		c.cursors[i] = cursor
@@ -79,14 +79,14 @@ func (c *cursors[Msg]) track(cursor *cursor[Msg]) {
 }
 
 func (c *cursors[_]) remove(i uuid.UUID) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	delete(c.cursors, i)
 }
 
 func (c *cursors[_]) offsets() []uint64 {
-	c.RLock()
-	defer c.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	res := make([]uint64, 0, len(c.cursors))
 	for _, cursor := range c.cursors {
 		off := atomic.LoadUint64(&cursor.offset)

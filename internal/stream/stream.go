@@ -18,10 +18,10 @@ type (
 
 	// Running is the internal implementation of a stream.Running
 	Running[In, Out any] struct {
-		mu      sync.Mutex
 		*Stream[In, Out]
 		monitor chan context.Advice
 		done    chan context.Done
+		mu      sync.Mutex
 	}
 )
 

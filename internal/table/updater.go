@@ -4,10 +4,10 @@ import "github.com/kode4food/caravan/table"
 
 // Updater is the internal implementation of a table.Updater
 type Updater[Msg any, Key comparable, Value any] struct {
-	key     table.KeySelector[Msg, Key]
-	columns []table.Column[Msg, Value]
 	table   table.Table[Key, Value]
+	key     table.KeySelector[Msg, Key]
 	setter  table.Setter[Key, Value]
+	columns []table.Column[Msg, Value]
 }
 
 // MakeUpdater instantiates a new internal Updater instance

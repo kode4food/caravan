@@ -9,8 +9,8 @@ import (
 
 type consumer[Msg any] struct {
 	*cursor[Msg]
-	id      uuid.UUID
 	channel chan Msg
+	id      uuid.UUID
 }
 
 const (

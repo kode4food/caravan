@@ -10,11 +10,11 @@ import (
 type (
 	// Log manages a set of segments that contain Log entries
 	Log[Msg any] struct {
+		tail          tailSegment[Msg]
+		head          headSegment[Msg]
 		startOffset   uint64
 		virtualLength uint64
 		capIncrement  uint32
-		head          headSegment[Msg]
-		tail          tailSegment[Msg]
 	}
 
 	logEntry[Msg any] struct {
@@ -22,24 +22,24 @@ type (
 	}
 
 	headSegment[Msg any] struct {
-		mu      sync.RWMutex
 		segment *segment[Msg]
+		mu      sync.RWMutex
 	}
 
 	tailSegment[Msg any] struct {
-		mu      sync.Mutex
 		segment *segment[Msg]
+		mu      sync.Mutex
 	}
 
 	// segment manages a set of Log entries that include messages and the
 	// Time at which they were emitted
 	segment[Msg any] struct {
-		mutex.InitialMutex
 		log     *Log[Msg]
 		next    *segment[Msg]
+		entries []*logEntry[Msg]
+		mu      mutex.InitialMutex
 		len     uint32
 		cap     uint32
-		entries []*logEntry[Msg]
 	}
 
 	// retentionQuery is called by Log in order to determine if a segment
@@ -152,17 +152,17 @@ func (l *Log[Msg]) vacuum(retain retentionQuery[Msg]) {
 }
 
 func (s *segment[Msg]) getNext() *segment[Msg] {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.next
 }
 
 func (s *segment[Msg]) append(entry *logEntry[Msg]) *segment[Msg] {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.len == s.cap {
 		s.next = s.log.makeSegment()
-		s.DisableLock()
+		s.mu.DisableLock()
 		return s.next.append(entry)
 	}
 	s.entries[s.len] = entry

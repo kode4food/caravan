@@ -22,8 +22,8 @@ type (
 
 	// topicObservers manages a set of callbacks for observers of a Topic
 	topicObservers struct {
-		sync.RWMutex
 		callbacks map[uuid.UUID]func()
+		mu        sync.RWMutex
 	}
 )
 
@@ -128,20 +128,20 @@ func makeLogObservers() *topicObservers {
 }
 
 func (o *topicObservers) add(i uuid.UUID, cb func()) {
-	o.Lock()
-	defer o.Unlock()
+	o.mu.Lock()
+	defer o.mu.Unlock()
 	o.callbacks[i] = cb
 }
 
 func (o *topicObservers) remove(i uuid.UUID) {
-	o.Lock()
-	defer o.Unlock()
+	o.mu.Lock()
+	defer o.mu.Unlock()
 	delete(o.callbacks, i)
 }
 
 func (o *topicObservers) notify() {
-	o.RLock()
-	defer o.RUnlock()
+	o.mu.RLock()
+	defer o.mu.RUnlock()
 	for _, cb := range o.callbacks {
 		cb()
 	}

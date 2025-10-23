@@ -9,10 +9,10 @@ import (
 
 // Table is the internal implementation of a table.Table
 type Table[Key comparable, Value any] struct {
-	mu      sync.RWMutex
-	names   []table.ColumnName
 	indexes map[table.ColumnName]int
 	rows    map[Key][]Value
+	names   []table.ColumnName
+	mu      sync.RWMutex
 }
 
 func Make[Key comparable, Value any](

@@ -9,8 +9,8 @@ type (
 	}
 
 	column[Msg, Value any] struct {
-		name  ColumnName
 		value ValueSelector[Msg, Value]
+		name  ColumnName
 	}
 )
 

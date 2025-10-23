@@ -11,9 +11,9 @@ import (
 
 type producer[Msg any] struct {
 	closer.Closer
-	id      uuid.UUID
 	topic   *Topic[Msg]
 	channel chan Msg
+	id      uuid.UUID
 }
 
 const (
