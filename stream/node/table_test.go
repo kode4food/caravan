@@ -111,7 +111,8 @@ func TestLookupCreateError(t *testing.T) {
 		},
 	)
 	as.Nil(lookup)
-	as.EqualError(err, fmt.Sprintf(table.ErrColumnNotFound, "missing"))
+	as.ErrorIs(err, table.ErrColumnNotFound)
+	as.Contains(err.Error(), "missing")
 }
 
 func TestLookupProcessError(t *testing.T) {
@@ -136,9 +137,9 @@ func TestLookupProcessError(t *testing.T) {
 	lookup.Start(context.Make(done, monitor, in, make(chan any)))
 
 	in <- "missing"
-	as.EqualError(
-		(<-monitor).(error), fmt.Sprintf(table.ErrKeyNotFound, theKey),
-	)
+	err := (<-monitor).(error)
+	as.Contains(err.Error(), table.ErrKeyNotFound.Error())
+	as.Contains(err.Error(), theKey)
 	close(done)
 }
 
@@ -364,7 +365,8 @@ func TestTableDelete(t *testing.T) {
 
 	getter, _ := tbl.Getter("value")
 	_, err := getter("id1")
-	as.EqualError(err, fmt.Sprintf(table.ErrKeyNotFound, "id1"))
+	as.ErrorIs(err, table.ErrKeyNotFound)
+	as.Contains(err.Error(), "id1")
 
 	_, err = getter("id2")
 	as.Nil(err)

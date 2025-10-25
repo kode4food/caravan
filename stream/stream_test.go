@@ -37,7 +37,7 @@ func TestProcessorStart(t *testing.T) {
 
 	select {
 	case r := <-h.Logs:
-		as.Contains(r.Message, stream.ErrReturnedLate)
+		as.Contains(r.Message, stream.ErrReturnedLate.Error())
 	case <-time.After(time.Second):
 		t.Fatal("timeout waiting for debug log")
 	}

@@ -40,7 +40,7 @@ func TestStreamStop(t *testing.T) {
 	s := makeGeneratingStream("hello").Start()
 	as.NotNil(s)
 	as.Nil(s.Stop())
-	as.EqualError(s.Stop(), stream.ErrAlreadyStopped)
+	as.ErrorIs(s.Stop(), stream.ErrAlreadyStopped)
 }
 
 func TestStreamMonitorStop(t *testing.T) {
@@ -60,7 +60,7 @@ func TestStreamMonitorStop(t *testing.T) {
 	done := make(chan bool)
 	go func() {
 		time.Sleep(50 * time.Millisecond)
-		as.EqualError(s.Stop(), stream.ErrAlreadyStopped)
+		as.ErrorIs(s.Stop(), stream.ErrAlreadyStopped)
 		done <- true
 	}()
 	<-done

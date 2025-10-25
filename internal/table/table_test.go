@@ -43,7 +43,8 @@ func TestTable(t *testing.T) {
 	missing := "missing"
 	res, err = getter(missing)
 	as.Nil(res)
-	as.EqualError(err, fmt.Sprintf(table.ErrKeyNotFound, missing))
+	as.ErrorIs(err, table.ErrKeyNotFound)
+	as.Contains(err.Error(), missing)
 }
 
 func TestBadTable(t *testing.T) {
@@ -52,7 +53,8 @@ func TestBadTable(t *testing.T) {
 		"column-1", "column-2", "column-1",
 	)
 	as.Nil(tbl)
-	as.Errorf(err, table.ErrDuplicateColumnName, "column-1")
+	as.ErrorIs(err, table.ErrDuplicateColumnName)
+	as.Contains(err.Error(), "column-1")
 }
 
 func TestMissingColumn(t *testing.T) {
@@ -65,7 +67,8 @@ func TestMissingColumn(t *testing.T) {
 	as.Equal([]table.ColumnName{"column-1", "column-2"}, tbl.Columns())
 	sel, err := tbl.Getter("not-found")
 	as.Nil(sel)
-	as.EqualError(err, fmt.Sprintf(table.ErrColumnNotFound, "not-found"))
+	as.ErrorIs(err, table.ErrColumnNotFound)
+	as.Contains(err.Error(), "not-found")
 }
 
 func TestCompetingSetters(t *testing.T) {
@@ -110,21 +113,27 @@ func TestBadSetter(t *testing.T) {
 
 	s, err := tbl.Setter("column-1", "column-2", "column-1")
 	as.Nil(s)
-	as.Errorf(err, table.ErrDuplicateColumnName, "column-1")
+	as.ErrorIs(err, table.ErrDuplicateColumnName)
+	as.Contains(err.Error(), "column-1")
 
 	s, err = tbl.Setter("column-1", "column-2", "column-3")
 	as.Nil(s)
-	as.EqualError(err, fmt.Sprintf(table.ErrColumnNotFound, "column-3"))
+	as.ErrorIs(err, table.ErrColumnNotFound)
+	as.Contains(err.Error(), "column-3")
 
 	s, err = tbl.Setter("column-1", "column-2")
 	as.NotNil(s)
 	as.Nil(err)
 
 	err = s("some-key", "too few")
-	as.Errorf(err, fmt.Sprintf(table.ErrValueCountRequired, 2, 1))
+	as.ErrorIs(err, table.ErrValueCountRequired)
+	as.Contains(err.Error(), "2")
+	as.Contains(err.Error(), "1")
 
 	err = s("some-key", "one", "too", "many")
-	as.Errorf(err, fmt.Sprintf(table.ErrValueCountRequired, 2, 3))
+	as.ErrorIs(err, table.ErrValueCountRequired)
+	as.Contains(err.Error(), "2")
+	as.Contains(err.Error(), "3")
 }
 
 func TestTableDelete(t *testing.T) {
@@ -151,7 +160,8 @@ func TestTableDelete(t *testing.T) {
 
 	// Verify row is gone
 	_, err = getter("user-2")
-	as.EqualError(err, fmt.Sprintf(table.ErrKeyNotFound, "user-2"))
+	as.ErrorIs(err, table.ErrKeyNotFound)
+	as.Contains(err.Error(), "user-2")
 
 	// Other rows still exist
 	row, err := getter("user-1")
@@ -160,7 +170,8 @@ func TestTableDelete(t *testing.T) {
 
 	// Try to delete non-existent key
 	err = tbl.Delete("user-999")
-	as.EqualError(err, fmt.Sprintf(table.ErrKeyNotFoundDelete, "user-999"))
+	as.ErrorIs(err, table.ErrKeyNotFoundDelete)
+	as.Contains(err.Error(), "user-999")
 }
 
 func TestTableKeys(t *testing.T) {

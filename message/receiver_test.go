@@ -38,7 +38,7 @@ func TestMustReceive(t *testing.T) {
 	c.Close()
 
 	defer func() {
-		as.Errorf(recover().(error), message.ErrReceiverClosed)
+		as.ErrorIs(recover().(error), message.ErrReceiverClosed)
 	}()
 	message.MustReceive(c)
 }

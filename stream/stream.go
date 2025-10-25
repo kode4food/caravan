@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"errors"
 	"log/slog"
 	"time"
 
@@ -49,10 +50,9 @@ type (
 	Sink struct{}
 )
 
-// Error messages
-const (
-	ErrReturnedLate   = "processor returned late before context closed"
-	ErrAlreadyStopped = "stream already stopped"
+var (
+	ErrReturnedLate   = errors.New("processor returned late")
+	ErrAlreadyStopped = errors.New("stream already stopped")
 )
 
 // Start begins the Processor in a new go routine, logging any abnormalities
@@ -62,7 +62,7 @@ func (p Processor[In, Out]) Start(c *context.Context[In, Out]) {
 		p(c)
 		end := time.Now().UnixNano() / int64(time.Millisecond)
 		if end-start > 1 && !c.IsDone() {
-			slog.Debug(ErrReturnedLate)
+			slog.Debug(ErrReturnedLate.Error())
 		}
 	}()
 }

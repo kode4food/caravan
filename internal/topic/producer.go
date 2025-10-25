@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"errors"
 	"log/slog"
 	"runtime"
 
@@ -16,8 +17,8 @@ type producer[Msg any] struct {
 	id      uuid.UUID
 }
 
-const (
-	ErrProducerNotClosed = "producer finalized without being closed"
+var (
+	ErrProducerNotClosed = errors.New("producer not closed")
 )
 
 func makeProducer[Msg any](t *Topic[Msg]) *producer[Msg] {
@@ -56,7 +57,7 @@ func producerDebugFinalizer[Msg any](p *producer[Msg]) {
 	select {
 	case <-p.IsClosed():
 	default:
-		slog.Debug(ErrProducerNotClosed,
+		slog.Debug(ErrProducerNotClosed.Error(),
 			slog.String("producer_id", p.id.String()),
 		)
 	}

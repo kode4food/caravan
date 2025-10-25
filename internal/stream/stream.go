@@ -1,7 +1,6 @@
 package stream
 
 import (
-	"errors"
 	"log"
 	"sync"
 
@@ -128,7 +127,7 @@ func (r *Running[_, _]) Stop() error {
 	defer r.mu.Unlock()
 
 	if !r.isRunning() {
-		return errors.New(stream.ErrAlreadyStopped)
+		return stream.ErrAlreadyStopped
 	}
 	r.stop()
 	return nil

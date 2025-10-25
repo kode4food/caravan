@@ -20,10 +20,8 @@ type (
 	}
 )
 
-// Error messages
-const (
-	// ErrReceiverClosed is raised when Receive is called on a closed Receiver
-	ErrReceiverClosed = "receiver is closed"
+var (
+	ErrReceiverClosed = errors.New("receiver closed")
 )
 
 // Poll will wait up until the specified Duration for a message to possibly be
@@ -50,5 +48,5 @@ func MustReceive[Msg any](r Receiver[Msg]) Msg {
 	if m, ok := Receive(r); ok {
 		return m
 	}
-	panic(errors.New(ErrReceiverClosed))
+	panic(ErrReceiverClosed)
 }

@@ -54,7 +54,7 @@ func (t *Table[Key, Value]) Getter(
 			}
 			return res, nil
 		}
-		return nil, fmt.Errorf(table.ErrKeyNotFound, k)
+		return nil, fmt.Errorf("%w: %v", table.ErrKeyNotFound, k)
 	}, nil
 }
 
@@ -74,7 +74,7 @@ func (t *Table[Key, Value]) Setter(
 		defer t.mu.Unlock()
 
 		if len(v) != len(indexes) {
-			return fmt.Errorf(
+			return fmt.Errorf("%w: need %d, got %d",
 				table.ErrValueCountRequired, len(indexes), len(v),
 			)
 		}
@@ -97,7 +97,7 @@ func (t *Table[_, _]) columnIndexes(c []table.ColumnName) ([]int, error) {
 			sel[i] = s
 			continue
 		}
-		return nil, fmt.Errorf(table.ErrColumnNotFound, name)
+		return nil, fmt.Errorf("%w: %s", table.ErrColumnNotFound, name)
 	}
 	return sel, nil
 }
@@ -107,7 +107,7 @@ func (t *Table[Key, Value]) Delete(k Key) error {
 	defer t.mu.Unlock()
 
 	if _, ok := t.rows[k]; !ok {
-		return fmt.Errorf(table.ErrKeyNotFoundDelete, k)
+		return fmt.Errorf("%w: %v", table.ErrKeyNotFoundDelete, k)
 	}
 	delete(t.rows, k)
 	return nil
@@ -148,7 +148,7 @@ func checkColumnDuplicates(c []table.ColumnName) error {
 	names := map[table.ColumnName]bool{}
 	for _, n := range c {
 		if _, ok := names[n]; ok {
-			return fmt.Errorf(table.ErrDuplicateColumnName, n)
+			return fmt.Errorf("%w: %s", table.ErrDuplicateColumnName, n)
 		}
 		names[n] = true
 	}

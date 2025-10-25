@@ -1,5 +1,7 @@
 package table
 
+import "errors"
+
 type (
 	// Table is an interface that associates a Key with multiple named Columns.
 	// The Key and Columns are selected using an Updater. Multiple Updaters are
@@ -40,11 +42,10 @@ type (
 	Setter[Key comparable, Value any] func(Key, ...Value) error
 )
 
-// Error messages
-const (
-	ErrKeyNotFound         = "key not found in table: %v"
-	ErrColumnNotFound      = "column not found in table: %s"
-	ErrDuplicateColumnName = "column name duplicated in table: %s"
-	ErrValueCountRequired  = "%d values are required, you provided %d"
-	ErrKeyNotFoundDelete   = "cannot delete key not found in table: %v"
+var (
+	ErrKeyNotFound         = errors.New("key not found in table")
+	ErrColumnNotFound      = errors.New("column not found in table")
+	ErrDuplicateColumnName = errors.New("column name duplicated")
+	ErrValueCountRequired  = errors.New("value count mismatch")
+	ErrKeyNotFoundDelete   = errors.New("key not found for delete")
 )

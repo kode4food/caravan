@@ -43,7 +43,7 @@ func TestConsumerGC(t *testing.T) {
 
 	select {
 	case r := <-h.Logs:
-		as.Contains(r.Message, "consumer finalized without being closed")
+		as.Contains(r.Message, "consumer not closed")
 	case <-time.After(time.Second):
 		t.Fatal("timeout waiting for debug log")
 	}

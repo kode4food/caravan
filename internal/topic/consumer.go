@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"errors"
 	"log/slog"
 	"runtime"
 
@@ -13,8 +14,8 @@ type consumer[Msg any] struct {
 	id      uuid.UUID
 }
 
-const (
-	ErrConsumerNotClosed = "consumer finalized without being closed"
+var (
+	ErrConsumerNotClosed = errors.New("consumer not closed")
 )
 
 func makeConsumer[Msg any](c *cursor[Msg]) *consumer[Msg] {
@@ -70,7 +71,7 @@ func consumerDebugFinalizer[Msg any](c *consumer[Msg]) {
 	select {
 	case <-c.IsClosed():
 	default:
-		slog.Debug(ErrConsumerNotClosed,
+		slog.Debug(ErrConsumerNotClosed.Error(),
 			slog.String("consumer_id", c.id.String()),
 		)
 	}

@@ -19,10 +19,8 @@ type (
 	}
 )
 
-// Error messages
-const (
-	// ErrSenderClosed is raised when MustSend is called on a closed Sender
-	ErrSenderClosed = "sender is closed"
+var (
+	ErrSenderClosed = errors.New("sender closed")
 )
 
 // Send sends a message to a ClosingSender
@@ -39,6 +37,6 @@ func Send[Msg any](s ClosingSender[Msg], m Msg) bool {
 // MustSend will send to a ClosingSender or panic if it is closed
 func MustSend[Msg any](s ClosingSender[Msg], m Msg) {
 	if !Send(s, m) {
-		panic(errors.New(ErrSenderClosed))
+		panic(ErrSenderClosed)
 	}
 }

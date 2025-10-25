@@ -17,7 +17,7 @@ func TestMustSend(t *testing.T) {
 	p.Close()
 
 	defer func() {
-		as.Errorf(recover().(error), message.ErrSenderClosed)
+		as.ErrorIs(recover().(error), message.ErrSenderClosed)
 	}()
 	message.MustSend(p, "explode")
 }

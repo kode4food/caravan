@@ -1,7 +1,6 @@
 package table_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,5 +76,6 @@ func TestUpdater(t *testing.T) {
 	missing := "missing"
 	res, err = sel(missing)
 	as.Nil(res)
-	as.EqualError(err, fmt.Sprintf(table.ErrKeyNotFound, missing))
+	as.ErrorIs(err, table.ErrKeyNotFound)
+	as.Contains(err.Error(), missing)
 }
