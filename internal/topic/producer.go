@@ -58,7 +58,6 @@ func producerDebugFinalizer[Msg any](p *producer[Msg]) {
 	case <-p.IsClosed():
 	default:
 		slog.Debug(ErrProducerNotClosed.Error(),
-			slog.String("producer_id", p.id.String()),
-		)
+			slog.String("producer_id", p.id.String()))
 	}
 }

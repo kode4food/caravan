@@ -72,7 +72,6 @@ func consumerDebugFinalizer[Msg any](c *consumer[Msg]) {
 	case <-c.IsClosed():
 	default:
 		slog.Debug(ErrConsumerNotClosed.Error(),
-			slog.String("consumer_id", c.id.String()),
-		)
+			slog.String("consumer_id", c.id.String()))
 	}
 }
