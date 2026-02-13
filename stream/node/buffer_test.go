@@ -27,7 +27,7 @@ func TestBuffer(t *testing.T) {
 
 	go func() {
 		p := in.NewProducer()
-		for i := 0; i < 6; i++ {
+		for i := range 6 {
 			p.Send() <- i
 		}
 		p.Close()

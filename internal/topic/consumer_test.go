@@ -118,11 +118,11 @@ func TestLoadedConsumer(t *testing.T) {
 	p := top.NewProducer()
 	c := top.NewConsumer()
 
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		p.Send() <- i
 	}
 
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		as.Equal(i, message.MustReceive(c))
 	}
 
@@ -138,7 +138,7 @@ func TestStreamingConsumer(t *testing.T) {
 	c := top.NewConsumer()
 
 	go func() {
-		for i := 0; i < 100000; i++ {
+		for i := range 100000 {
 			p.Send() <- i
 		}
 		p.Close()
@@ -147,7 +147,7 @@ func TestStreamingConsumer(t *testing.T) {
 	done := make(chan bool)
 
 	go func() {
-		for i := 0; i < 100000; i++ {
+		for i := range 100000 {
 			as.Equal(i, message.MustReceive(c))
 		}
 		done <- true

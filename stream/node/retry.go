@@ -28,7 +28,7 @@ func Retry[From, To any](
 			var result To
 			var err error
 
-			for attempt := 0; attempt < maxAttempts; attempt++ {
+			for attempt := range maxAttempts {
 				result, err = fn(msg)
 				if err == nil {
 					break

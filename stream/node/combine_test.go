@@ -171,7 +171,7 @@ func testUnorderedIntResults(t *testing.T, c <-chan int, nums ...int) {
 	for _, n := range nums {
 		choices[n] = true
 	}
-	for i := 0; i < len(nums); i++ {
+	for range nums {
 		v := <-c
 		_, ok := choices[v]
 		as.True(ok)

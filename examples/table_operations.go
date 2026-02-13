@@ -89,7 +89,7 @@ func example1BatchUpdates() {
 	go func() {
 		p := ordersIn.NewProducer()
 		defer p.Close()
-		for i := 0; i < 25; i++ {
+		for i := range 25 {
 			p.Send() <- &Order{
 				ID:     fmt.Sprintf("order-%d", i),
 				UserID: fmt.Sprintf("user-%d", i%5),

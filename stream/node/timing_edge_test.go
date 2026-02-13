@@ -154,7 +154,7 @@ func TestThrottleStreamIntegration(t *testing.T) {
 	// Send messages rapidly
 	p := in.NewProducer()
 	go func() {
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			p.Send() <- i
 			time.Sleep(10 * time.Millisecond)
 		}
@@ -206,13 +206,13 @@ func TestDebounceStreamIntegration(t *testing.T) {
 	// Send burst of messages
 	p := in.NewProducer()
 	go func() {
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			p.Send() <- "burst1"
 			time.Sleep(10 * time.Millisecond)
 		}
 		time.Sleep(60 * time.Millisecond) // Wait for debounce
 
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			p.Send() <- "burst2"
 			time.Sleep(10 * time.Millisecond)
 		}
@@ -258,7 +258,7 @@ func TestDelayStreamIntegration(t *testing.T) {
 	// Send messages
 	p := in.NewProducer()
 	go func() {
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			p.Send() <- i
 		}
 		p.Close()
@@ -268,7 +268,7 @@ func TestDelayStreamIntegration(t *testing.T) {
 	c := out.NewConsumer()
 
 	// Receive a couple of delayed messages
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		select {
 		case val := <-c.Receive():
 			as.Equal(i, val)
@@ -305,7 +305,7 @@ func TestSampleStreamIntegration(t *testing.T) {
 	// Send many messages rapidly
 	p := in.NewProducer()
 	go func() {
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			p.Send() <- i
 			time.Sleep(5 * time.Millisecond)
 		}

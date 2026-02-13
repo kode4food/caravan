@@ -20,12 +20,12 @@ func TestLongLog(t *testing.T) {
 	defer c.Close()
 
 	go func() {
-		for i := 0; i < 10000; i++ {
+		for i := range 10000 {
 			p.Send() <- i
 		}
 	}()
 
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		e := <-c.Receive()
 		as.Equal(i, e)
 	}
@@ -39,13 +39,13 @@ func TestConsumerReadsAllMessages(t *testing.T) {
 	l := caravan.NewTopic[any]()
 	p := l.NewProducer()
 	defer p.Close()
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		p.Send() <- i
 	}
 
 	c := l.NewConsumer()
 	defer c.Close()
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		e := <-c.Receive()
 		as.Equal(i, e)
 	}
@@ -66,7 +66,7 @@ func TestLogDiscarding(t *testing.T) {
 		p.Send() <- i
 	}
 
-	for i := 0; i < segmentSize; i++ {
+	for i := range segmentSize {
 		e := <-c.Receive()
 		as.Equal(i, e)
 	}
@@ -90,11 +90,11 @@ func TestLogDiscardEverything(t *testing.T) {
 	c := l.NewConsumer()
 	defer c.Close()
 
-	for i := 0; i < segmentSize; i++ {
+	for i := range segmentSize {
 		p.Send() <- i
 	}
 
-	for i := 0; i < segmentSize; i++ {
+	for i := range segmentSize {
 		e := <-c.Receive()
 		as.Equal(i, e)
 	}

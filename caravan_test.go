@@ -18,7 +18,7 @@ func TestNewStream(t *testing.T) {
 	// Create a simple source that generates a few messages
 	source := stream.Processor[stream.Source, int](
 		func(c *context.Context[stream.Source, int]) {
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				c.Out <- i
 			}
 		},

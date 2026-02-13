@@ -28,7 +28,7 @@ func TestThrottle(t *testing.T) {
 	go func() {
 		p := in.NewProducer()
 		defer p.Close()
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			p.Send() <- i
 		}
 	}()
@@ -36,7 +36,7 @@ func TestThrottle(t *testing.T) {
 	c := out.NewConsumer()
 	defer c.Close()
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		result := <-c.Receive()
 		assert.Equal(t, i, result)
 	}
@@ -193,7 +193,7 @@ func TestDelay(t *testing.T) {
 	go func() {
 		p := in.NewProducer()
 		defer p.Close()
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			p.Send() <- i
 		}
 	}()
@@ -202,7 +202,7 @@ func TestDelay(t *testing.T) {
 	defer c.Close()
 
 	start := time.Now()
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		result := <-c.Receive()
 		assert.Equal(t, i, result)
 	}
@@ -229,7 +229,7 @@ func TestSample(t *testing.T) {
 		p := in.NewProducer()
 		defer p.Close()
 		// Send messages rapidly
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			p.Send() <- i
 			time.Sleep(20 * time.Millisecond)
 		}

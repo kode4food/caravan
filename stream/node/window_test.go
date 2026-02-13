@@ -29,7 +29,7 @@ func TestWindow(t *testing.T) {
 		p := in.NewProducer()
 		defer p.Close()
 		// Send messages over 250ms
-		for i := 0; i < 6; i++ {
+		for i := range 6 {
 			p.Send() <- i
 			time.Sleep(50 * time.Millisecond)
 		}
@@ -64,7 +64,7 @@ func TestSlidingWindow(t *testing.T) {
 	go func() {
 		p := in.NewProducer()
 		defer p.Close()
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			p.Send() <- i
 		}
 	}()

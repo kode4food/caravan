@@ -25,7 +25,7 @@ func TestFilter(t *testing.T) {
 	go func() {
 		p := in.NewProducer()
 		defer p.Close()
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			p.Send() <- i
 		}
 	}()

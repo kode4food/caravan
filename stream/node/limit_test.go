@@ -25,7 +25,7 @@ func TestTake(t *testing.T) {
 	go func() {
 		p := in.NewProducer()
 		defer p.Close()
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			p.Send() <- i
 		}
 	}()
@@ -33,7 +33,7 @@ func TestTake(t *testing.T) {
 	c := out.NewConsumer()
 	defer c.Close()
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		result := <-c.Receive()
 		assert.Equal(t, i, result)
 	}
@@ -55,7 +55,7 @@ func TestTakeWhile(t *testing.T) {
 	go func() {
 		p := in.NewProducer()
 		defer p.Close()
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			p.Send() <- i
 		}
 	}()
@@ -63,7 +63,7 @@ func TestTakeWhile(t *testing.T) {
 	c := out.NewConsumer()
 	defer c.Close()
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		result := <-c.Receive()
 		assert.Equal(t, i, result)
 	}
@@ -85,7 +85,7 @@ func TestSkip(t *testing.T) {
 	go func() {
 		p := in.NewProducer()
 		defer p.Close()
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			p.Send() <- i
 		}
 	}()
@@ -115,7 +115,7 @@ func TestSkipWhile(t *testing.T) {
 	go func() {
 		p := in.NewProducer()
 		defer p.Close()
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			p.Send() <- i
 		}
 	}()
