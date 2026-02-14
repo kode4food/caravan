@@ -2,7 +2,7 @@
 
 ### Stream Processing and State Management for Go
 
-[![Go Report Card](https://img.shields.io/badge/go%20report-A+-brightgreen.svg)](https://goreportcard.com/report/github.com/kode4food/caravan) ![Build Status](https://github.com/kode4food/caravan/actions/workflows/build.yml/badge.svg) [![Code Coverage](https://qlty.sh/gh/kode4food/projects/caravan/coverage.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![Maintainability](https://qlty.sh/gh/kode4food/projects/caravan/maintainability.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![GitHub](https://img.shields.io/github/license/kode4food/caravan)](https://github.com/kode4food/caravan/blob/main/LICENSE.md)
+![Build Status](https://github.com/kode4food/caravan/actions/workflows/build.yml/badge.svg) [![Code Coverage](https://qlty.sh/gh/kode4food/projects/caravan/coverage.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![Maintainability](https://qlty.sh/gh/kode4food/projects/caravan/maintainability.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![GitHub](https://img.shields.io/github/license/kode4food/caravan)](https://github.com/kode4food/caravan/blob/main/LICENSE.md)
 
 Caravan is a Go library that provides powerful primitives for building in-process streaming applications with integrated state management. It combines reactive stream processing with efficient table operations to enable real-time data transformations, aggregations, and stateful workflows.
 
@@ -153,29 +153,34 @@ fmt.Printf("User: %s <%s>\n", values[0], values[1])
 Caravan provides a rich set of stream operators for building complex pipelines:
 
 ### Transformation
+
 - `Map` - Transform messages one-to-one
 - `FlatMap` - Transform messages one-to-many
 - `Filter` - Filter messages by predicate
 - `Transform` - Generic transformation operator
 
 ### Aggregation
+
 - `Scan` - Stateful accumulation
 - `Aggregate` - Windowed aggregations
 - `TableAggregate` - Aggregate to table storage
 - `Reduce` - Reduce to single value
 
 ### Grouping & Windowing
+
 - `GroupBy` - Partition by key
 - `Window` - Time-based windowing
 - `Buffer` - Batch messages by count or time
 
 ### Table Integration
+
 - `TableUpdate` - Update table from stream
 - `TableBatchUpdate` - Batch update table
 - `TableScan` - Multi-key table lookups
 - `TableAggregate` - Aggregate into table
 
 ### Flow Control
+
 - `Limit` - Limit message count
 - `DistinctBy` - Remove duplicates
 - `Retry` - Retry failed operations
@@ -183,6 +188,7 @@ Caravan provides a rich set of stream operators for building complex pipelines:
 - `Throttle` - Throttle message rate
 
 ### Utilities
+
 - `ForEach` - Side effects
 - `Split` - Split stream by predicate
 - `Combine` - Merge multiple streams
