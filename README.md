@@ -2,7 +2,7 @@
 
 ### Stream Processing and State Management for Go
 
-![Build Status](https://github.com/kode4food/caravan/actions/workflows/build.yml/badge.svg) [![Code Coverage](https://qlty.sh/gh/kode4food/projects/caravan/coverage.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![Maintainability](https://qlty.sh/gh/kode4food/projects/caravan/maintainability.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![GitHub](https://img.shields.io/github/license/kode4food/caravan)](https://github.com/kode4food/caravan/blob/main/LICENSE.md)
+![Build Status](https://github.com/kode4food/caravan/actions/workflows/build.yml/badge.svg) [![Code Coverage](https://qlty.sh/gh/kode4food/projects/caravan/coverage.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![Maintainability](https://qlty.sh/gh/kode4food/projects/caravan/maintainability.svg)](https://qlty.sh/gh/kode4food/projects/caravan) [![GitHub](https://img.shields.io/github/license/kode4food/caravan)](https://github.com/kode4food/caravan/blob/main/LICENSE)
 
 Caravan is a Go library that provides powerful primitives for building in-process streaming applications with integrated state management. It combines reactive stream processing with efficient table operations to enable real-time data transformations, aggregations, and stateful workflows.
 
