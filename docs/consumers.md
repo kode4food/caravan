@@ -1,6 +1,6 @@
 # Consumers
 
-Consumers allow you to receive messages from the Log. You can do this using functions like `Poll`, which allows for a timeout, using `Receive`, which will block indefinitely, or retrieving the underlying channel and pulling messages directly from it.
+Consumers allow you to receive messages from the Log. You can use `Poll` with a timeout or receive directly from the Consumer's channel.
 
 Each Consumer instantiated from a Topic maintains an independent index into its Log. In this way, a Caravan Topic acts a bit like a Fanout Exchange in a Message Broker. The difference between Caravan and a Message Broker is that, in Caravan, Consumers can be instantiated at any time, and they will start consuming at the first retained message in the Log, even if that was the first message ever produced. In a Message Broker, you only have access to Messages produced after your Queue has been plumbed into the Topic.
 
@@ -31,9 +31,9 @@ func main() {
 }
 ```
 
-## Receive
+## Receive Channel
 
-The `Receive` function will block indefinitely until a message is returned. If the Consumer has been closed, this boolean result will be `false`.
+Receiving from the Consumer's channel blocks until a message arrives. If the Consumer has been closed, the boolean result is `false`.
 
 ```go
 package main
@@ -42,14 +42,13 @@ import (
     "fmt"
 
     "github.com/kode4food/caravan"
-    "github.com/kode4food/caravan/message"
 )
 
 func main() {
     top := caravan.NewTopic[any]()
     // ... Code that produces messages
     c := top.NewConsumer()
-    if e, ok := message.Receive(c); ok {
+    if e, ok := <-c.Receive(); ok {
         fmt.Println("Received: ", e)
     } else {
         fmt.Println("Consumer was closed!")

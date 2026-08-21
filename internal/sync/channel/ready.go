@@ -12,8 +12,8 @@ type ReadyWait struct {
 
 const readyWaitCap = 1 // must be non-zero
 
-// MakeReadyWait returns a new ReadyWait
-func MakeReadyWait() *ReadyWait {
+// NewReadyWait returns an empty readiness signal
+func NewReadyWait() *ReadyWait {
 	return &ReadyWait{
 		ready: make(chan struct{}, readyWaitCap),
 	}

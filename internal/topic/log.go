@@ -8,18 +8,13 @@ import (
 )
 
 type (
-	// Log manages a set of segments that contain Log entries
-	Log[Msg any] struct {
+	log[Msg any] struct {
 		tail          tailSegment[Msg]
 		head          headSegment[Msg]
 		startOffset   uint64
-		virtualLength uint64
+		virtualLength atomic.Uint64
 		capIncrement  uint32
 		segmentPool   sync.Pool
-	}
-
-	logEntry[Msg any] struct {
-		msg Msg
 	}
 
 	headSegment[Msg any] struct {
@@ -35,9 +30,9 @@ type (
 	// segment manages a set of Log entries that include messages and the
 	// Time at which they were emitted
 	segment[Msg any] struct {
-		log     *Log[Msg]
+		log     *log[Msg]
 		next    *segment[Msg]
-		entries []*logEntry[Msg]
+		entries []Msg
 		mu      mutex.InitialMutex
 		len     uint32
 		cap     uint32
@@ -48,8 +43,8 @@ type (
 	retentionQuery[Msg any] func(*segment[Msg]) bool
 )
 
-func makeLog[Msg any](segmentSize uint32) *Log[Msg] {
-	l := &Log[Msg]{
+func newLog[Msg any](segmentSize uint32) *log[Msg] {
+	l := &log[Msg]{
 		capIncrement: segmentSize,
 	}
 	l.segmentPool.New = func() any {
@@ -58,19 +53,15 @@ func makeLog[Msg any](segmentSize uint32) *Log[Msg] {
 	return l
 }
 
-func (l *Log[_]) start() uint64 {
+func (l *log[_]) start() uint64 {
 	return atomic.LoadUint64(&l.startOffset)
 }
 
-func (l *Log[_]) length() uint64 {
-	return atomic.LoadUint64(&l.virtualLength)
+func (l *log[_]) length() uint64 {
+	return l.virtualLength.Load()
 }
 
-func (l *Log[Msg]) put(msg Msg) {
-	entry := &logEntry[Msg]{
-		msg: msg,
-	}
-
+func (l *log[Msg]) put(msg Msg) {
 	l.tail.mu.Lock()
 	defer l.tail.mu.Unlock()
 	tail := l.tail.segment
@@ -81,13 +72,13 @@ func (l *Log[Msg]) put(msg Msg) {
 		l.head.segment = tail
 		l.tail.segment = tail
 	}
-	if s := tail.append(entry); s != tail {
+	if s := tail.append(msg); s != tail {
 		l.tail.segment = s
 	}
-	atomic.AddUint64(&l.virtualLength, uint64(1))
+	l.virtualLength.Add(uint64(1))
 }
 
-func (l *Log[Msg]) getSegment() *segment[Msg] {
+func (l *log[Msg]) getSegment() *segment[Msg] {
 	s := l.segmentPool.Get().(*segment[Msg])
 	s.next = nil
 	s.len = 0
@@ -95,20 +86,20 @@ func (l *Log[Msg]) getSegment() *segment[Msg] {
 	return s
 }
 
-func (l *Log[Msg]) newSegment() *segment[Msg] {
+func (l *log[Msg]) newSegment() *segment[Msg] {
 	c := l.capIncrement
 	return &segment[Msg]{
 		log:     l,
 		cap:     c,
-		entries: make([]*logEntry[Msg], c),
+		entries: make([]Msg, c),
 	}
 }
 
-func (l *Log[Msg]) returnSegment(s *segment[Msg]) {
+func (l *log[Msg]) returnSegment(s *segment[Msg]) {
 	l.segmentPool.Put(s)
 }
 
-func (l *Log[Msg]) get(o uint64) (*logEntry[Msg], uint64, bool) {
+func (l *log[Msg]) get(o uint64) (Msg, uint64, bool) {
 	l.head.mu.RLock()
 	o, pos := l.relativePos(o)
 	curr := l.head.segment
@@ -123,10 +114,11 @@ func (l *Log[Msg]) get(o uint64) (*logEntry[Msg], uint64, bool) {
 			return curr.entries[p], o, true
 		}
 	}
-	return &logEntry[Msg]{}, o, false
+	var zero Msg
+	return zero, o, false
 }
 
-func (l *Log[_]) relativePos(o uint64) (uint64, uint64) {
+func (l *log[_]) relativePos(o uint64) (uint64, uint64) {
 	eo := l.startOffset
 	if o < eo { // if requested is less than actual, we start at actual
 		o = eo
@@ -134,7 +126,7 @@ func (l *Log[_]) relativePos(o uint64) (uint64, uint64) {
 	return o, o - eo
 }
 
-func (l *Log[_]) canVacuum() bool {
+func (l *log[_]) canVacuum() bool {
 	l.head.mu.RLock()
 	defer l.head.mu.RUnlock()
 	if head := l.head.segment; head != nil {
@@ -143,7 +135,7 @@ func (l *Log[_]) canVacuum() bool {
 	return false
 }
 
-func (l *Log[Msg]) vacuum(retain retentionQuery[Msg]) {
+func (l *log[Msg]) vacuum(retain retentionQuery[Msg]) {
 	l.head.mu.Lock()
 	defer l.head.mu.Unlock()
 
@@ -173,15 +165,15 @@ func (s *segment[Msg]) getNext() *segment[Msg] {
 	return s.next
 }
 
-func (s *segment[Msg]) append(entry *logEntry[Msg]) *segment[Msg] {
+func (s *segment[Msg]) append(msg Msg) *segment[Msg] {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.len == s.cap {
 		s.next = s.log.getSegment()
 		s.mu.DisableLock()
-		return s.next.append(entry)
+		return s.next.append(msg)
 	}
-	s.entries[s.len] = entry
+	s.entries[s.len] = msg
 	atomic.AddUint32(&s.len, uint32(1))
 	return s
 }

@@ -21,6 +21,7 @@ type (
 		StartWith(AdviceHandler) Running
 	}
 
+	// Running controls a started Stream
 	Running interface {
 		// Stop instructs the Stream to stop processing
 		Stop() error
@@ -29,29 +30,29 @@ type (
 		IsRunning() bool
 	}
 
-	// AdviceHandler is provided to Stream.StartWith so that the programmer may
-	// react to Advice messages being received by the Stream's monitor channel.
+	// AdviceHandler receives Stream monitor Advice before default handling
 	// Calling next() will ultimately invoke the default behavior for the
 	// received Advice. Not calling next() will short-circuit that behavior
 	AdviceHandler func(a context.Advice, next func())
 
-	// Processor is a function that processes part of a Stream topology.
+	// Processor is a function that processes part of a Stream topology
 	// Recoverable and fatal errors can be sent to the context.Context's
-	// Monitor channel.
+	// Monitor channel
 	Processor[In, Out any] func(*context.Context[In, Out])
 
 	// Source messages are provided to a Processor that is meant to generate
-	// messages from a source outside its current Stream. Examples would be
-	// node.TopicConsumer and node.Generate
+	// messages from a source outside its current Stream
 	Source struct{}
 
 	// Sink messages are produced by a Processor that is meant to terminate a
-	// Stream. Examples would be node.SinkTo and node.Sink
+	// Stream
 	Sink struct{}
 )
 
 var (
-	ErrReturnedLate   = errors.New("processor returned late")
+	// ErrReturnedLate indicates a Processor returned after its Stream ended
+	ErrReturnedLate = errors.New("processor returned late")
+	// ErrAlreadyStopped indicates a Stream was already stopped
 	ErrAlreadyStopped = errors.New("stream already stopped")
 )
 

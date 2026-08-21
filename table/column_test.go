@@ -11,7 +11,7 @@ import (
 func TestColumn(t *testing.T) {
 	as := assert.New(t)
 
-	c := table.MakeColumn[any, string]("some-col", func(_ any) string {
+	c := table.NewColumn("some-col", func(_ any) string {
 		return "hello"
 	})
 

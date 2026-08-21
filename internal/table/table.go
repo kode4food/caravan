@@ -7,15 +7,15 @@ import (
 	"github.com/kode4food/caravan/table"
 )
 
-// Table is the internal implementation of a table.Table
-type Table[Key comparable, Value any] struct {
+type store[Key comparable, Value any] struct {
 	indexes map[table.ColumnName]int
 	rows    map[Key][]Value
 	names   []table.ColumnName
 	mu      sync.RWMutex
 }
 
-func Make[Key comparable, Value any](
+// New returns an empty Table with the provided columns
+func New[Key comparable, Value any](
 	cols ...table.ColumnName,
 ) (table.Table[Key, Value], error) {
 	if err := checkColumnDuplicates(cols); err != nil {
@@ -25,29 +25,31 @@ func Make[Key comparable, Value any](
 	for i, n := range cols {
 		indexes[n] = i
 	}
-	return &Table[Key, Value]{
+	return &store[Key, Value]{
 		names:   cols,
 		indexes: indexes,
 		rows:    map[Key][]Value{},
 	}, nil
 }
 
-func (t *Table[_, _]) Columns() []table.ColumnName {
-	return t.names[:]
+// Columns returns the names defined by the Table
+func (s *store[_, _]) Columns() []table.ColumnName {
+	return s.names[:]
 }
 
-func (t *Table[Key, Value]) Getter(
+// Getter returns a row reader for the selected Columns
+func (s *store[Key, Value]) Getter(
 	cols ...table.ColumnName,
 ) (table.Getter[Key, Value], error) {
-	indexes, err := t.columnIndexes(cols)
+	indexes, err := s.columnIndexes(cols)
 	if err != nil {
 		return nil, err
 	}
 	return func(k Key) ([]Value, error) {
-		t.mu.RLock()
-		defer t.mu.RUnlock()
+		s.mu.RLock()
+		defer s.mu.RUnlock()
 
-		if e, ok := t.rows[k]; ok {
+		if e, ok := s.rows[k]; ok {
 			res := make([]Value, len(indexes))
 			for out, in := range indexes {
 				res[out] = e[in]
@@ -58,10 +60,11 @@ func (t *Table[Key, Value]) Getter(
 	}, nil
 }
 
-func (t *Table[Key, Value]) Setter(
+// Setter returns a row writer for the selected Columns
+func (s *store[Key, Value]) Setter(
 	cols ...table.ColumnName,
 ) (table.Setter[Key, Value], error) {
-	indexes, err := t.columnIndexes(cols)
+	indexes, err := s.columnIndexes(cols)
 	if err != nil {
 		return nil, err
 	}
@@ -70,31 +73,31 @@ func (t *Table[Key, Value]) Setter(
 	}
 
 	return func(k Key, v ...Value) error {
-		t.mu.Lock()
-		defer t.mu.Unlock()
+		s.mu.Lock()
+		defer s.mu.Unlock()
 
 		if len(v) != len(indexes) {
 			return fmt.Errorf("%w: need %d, got %d",
 				table.ErrValueCountRequired, len(indexes), len(v),
 			)
 		}
-		e, ok := t.rows[k]
+		e, ok := s.rows[k]
 		if !ok {
-			e = make([]Value, len(t.names))
+			e = make([]Value, len(s.names))
 		}
 		for in, out := range indexes {
 			e[out] = v[in]
 		}
-		t.rows[k] = e
+		s.rows[k] = e
 		return nil
 	}, nil
 }
 
-func (t *Table[_, _]) columnIndexes(c []table.ColumnName) ([]int, error) {
+func (s *store[_, _]) columnIndexes(c []table.ColumnName) ([]int, error) {
 	sel := make([]int, len(c))
 	for i, name := range c {
-		if s, ok := t.indexes[name]; ok {
-			sel[i] = s
+		if index, ok := s.indexes[name]; ok {
+			sel[i] = index
 			continue
 		}
 		return nil, fmt.Errorf("%w: %s", table.ErrColumnNotFound, name)
@@ -102,40 +105,44 @@ func (t *Table[_, _]) columnIndexes(c []table.ColumnName) ([]int, error) {
 	return sel, nil
 }
 
-func (t *Table[Key, Value]) Delete(k Key) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+// Delete removes a row by key
+func (s *store[Key, Value]) Delete(k Key) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	if _, ok := t.rows[k]; !ok {
+	if _, ok := s.rows[k]; !ok {
 		return fmt.Errorf("%w: %v", table.ErrKeyNotFoundDelete, k)
 	}
-	delete(t.rows, k)
+	delete(s.rows, k)
 	return nil
 }
 
-func (t *Table[Key, Value]) Keys() []Key {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+// Keys returns every key currently stored in the Table
+func (s *store[Key, Value]) Keys() []Key {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	keys := make([]Key, 0, len(t.rows))
-	for k := range t.rows {
+	keys := make([]Key, 0, len(s.rows))
+	for k := range s.rows {
 		keys = append(keys, k)
 	}
 	return keys
 }
 
-func (t *Table[_, _]) Count() int {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return len(t.rows)
+// Count returns the number of rows in the Table
+func (s *store[_, _]) Count() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.rows)
 }
 
-func (t *Table[Key, Value]) Range(fn func(Key, []Value) bool) {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+// Range visits rows until fn returns false
+func (s *store[Key, Value]) Range(fn func(Key, []Value) bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	for k, v := range t.rows {
-		// Make a copy of the row to avoid holding the lock during callback
+	for k, v := range s.rows {
+		// Keep callbacks from mutating stored rows
 		rowCopy := make([]Value, len(v))
 		copy(rowCopy, v)
 		if !fn(k, rowCopy) {

@@ -28,7 +28,7 @@ func TestProcessorStart(t *testing.T) {
 	)
 
 	monitor := make(chan context.Advice)
-	c := context.Make[string, string](
+	c := context.New[string, string](
 		make(chan context.Done), monitor, nil, nil,
 	)
 

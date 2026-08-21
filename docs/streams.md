@@ -11,24 +11,21 @@ import (
     "fmt"
 
     "github.com/kode4food/caravan"
-    "github.com/kode4food/caravan/stream/node"
 )
 
 func main() {
     in := caravan.NewTopic[int]()
     out := caravan.NewTopic[int]()
 
-    s := caravan.NewStream(
-        // Stream from the 'in' topic
-        node.TopicConsumer(in),
+    // Stream from the 'in' topic
+    s := caravan.TopicConsumer(in).
         // Filter messages coming from 'in' to only include
         // even numbers
-        node.Filter(func(e int) bool {
+        Filter(func(e int) bool {
             return e % 2 == 0
-        }),
+        }).
         // Stream the remaining messages to the 'out' topic
-        node.TopicProducer(out),
-    )
+        TopicProducer(out)
     _ = s.Start()
 
     go func() {

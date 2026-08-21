@@ -11,7 +11,7 @@ import (
 func TestReadyWait(t *testing.T) {
 	as := assert.New(t)
 
-	w := channel.MakeReadyWait()
+	w := channel.NewReadyWait()
 	go func() {
 		as.NotNil(<-w.Wait())
 	}()

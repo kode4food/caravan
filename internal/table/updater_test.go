@@ -30,10 +30,10 @@ func TestUpdater(t *testing.T) {
 		func(e *tableRow) string {
 			return e.key
 		},
-		table.MakeColumn("name", func(r *tableRow) any {
+		table.NewColumn("name", func(r *tableRow) any {
 			return r.name
 		}),
-		table.MakeColumn("age", func(r *tableRow) any {
+		table.NewColumn("age", func(r *tableRow) any {
 			return r.age
 		}),
 	)

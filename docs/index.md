@@ -20,4 +20,4 @@ Messages that are passed around by Caravan. Caravan restricts the type per Topic
 
 ### Consumers
 
-[Consumers](./consumers.md) allow you to receive messages from the Log. You can do this using function like `message.Poll`, which allows for a timeout, using `message.Receive`, which will block indefinitely, or retrieving the underlying channel using the `Receive` method and pulling messages directly from it.
+[Consumers](./consumers.md) allow you to receive messages from the Log. Use `message.Poll` for a timeout or receive directly from the Consumer's `Receive` channel.

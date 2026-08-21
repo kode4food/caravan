@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/kode4food/caravan"
-	"github.com/kode4food/caravan/stream/node"
 	"github.com/kode4food/caravan/table"
 )
 
@@ -52,16 +51,16 @@ func example1BatchUpdates() {
 	orderUpdater, _ := caravan.NewTableUpdater(
 		ordersTable,
 		func(o *Order) string { return o.ID },
-		table.MakeColumn("id",
+		table.NewColumn("id",
 			func(o *Order) string { return o.ID },
 		),
-		table.MakeColumn("user_id",
+		table.NewColumn("user_id",
 			func(o *Order) string { return o.UserID },
 		),
-		table.MakeColumn("amount",
+		table.NewColumn("amount",
 			func(o *Order) string { return fmt.Sprintf("%d", o.Amount) },
 		),
-		table.MakeColumn("status",
+		table.NewColumn("status",
 			func(o *Order) string { return o.Status },
 		),
 	)
@@ -71,16 +70,10 @@ func example1BatchUpdates() {
 	batchesOut := caravan.NewTopic[[]*Order]()
 
 	// Stream: Buffer orders then batch update table
-	s := caravan.NewStream(
-		node.Bind(
-			node.Bind(
-				node.TopicConsumer(ordersIn),
-				node.Buffer[*Order](10, 500*time.Millisecond), // Batch 10 or 500ms
-			),
-			node.TableBatchUpdate(orderUpdater),
-		),
-		node.TopicProducer(batchesOut),
-	)
+	s := caravan.TopicConsumer(ordersIn).
+		Buffer(10, 500*time.Millisecond). // Batch 10 or 500ms
+		TableBatchUpdate(orderUpdater).
+		TopicProducer(batchesOut)
 
 	running := s.Start()
 	defer running.Stop()
@@ -141,21 +134,14 @@ func example2TableScan() {
 	lookupRequestsIn := caravan.NewTopic[[]string]()
 	amountsOut := caravan.NewTopic[string]()
 
-	// TableScan processor
-	scanner, _ := node.TableScan(
-		ordersTable,
-		"amount",
-		func(keys []string) []string { return keys },
-	)
-
 	// Stream: Scan multiple orders at once
-	s := caravan.NewStream(
-		node.Bind(
-			node.TopicConsumer(lookupRequestsIn),
-			scanner,
-		),
-		node.TopicProducer(amountsOut),
-	)
+	pipeline, _ := caravan.TopicConsumer(lookupRequestsIn).
+		TableScan(
+			ordersTable,
+			"amount",
+			func(keys []string) []string { return keys },
+		)
+	s := pipeline.TopicProducer(amountsOut)
 
 	running := s.Start()
 	defer running.Stop()
@@ -200,39 +186,28 @@ func example3Aggregations() {
 	ordersIn := caravan.NewTopic[*Order]()
 	statsOut := caravan.NewTopic[*UserStats]()
 
-	// Aggregate: Count orders and sum amounts
-	aggregator := node.TableAggregate(
-		&UserStats{UserID: "user-1", OrderCount: 0, TotalAmount: 0},
-		func(stats *UserStats, order *Order) *UserStats {
-			return &UserStats{
-				UserID:      order.UserID,
-				OrderCount:  stats.OrderCount + 1,
-				TotalAmount: stats.TotalAmount + order.Amount,
-			}
-		},
-		func(stats *UserStats) (string, []string) {
-			return stats.UserID, []string{
-				stats.UserID,
-				fmt.Sprintf("%d", stats.OrderCount),
-				fmt.Sprintf("%d", stats.TotalAmount),
-			}
-		},
-		setter,
-	)
-
 	// Stream: Aggregate orders and update stats table
-	s := caravan.NewStream(
-		node.Bind(
-			node.Bind(
-				node.TopicConsumer(ordersIn),
-				node.Filter(
-					func(o *Order) bool { return o.UserID == "user-1" },
-				),
-			),
-			aggregator,
-		),
-		node.TopicProducer(statsOut),
-	)
+	s := caravan.TopicConsumer(ordersIn).
+		Filter(func(o *Order) bool { return o.UserID == "user-1" }).
+		TableAggregate(
+			&UserStats{UserID: "user-1", OrderCount: 0, TotalAmount: 0},
+			func(stats *UserStats, order *Order) *UserStats {
+				return &UserStats{
+					UserID:      order.UserID,
+					OrderCount:  stats.OrderCount + 1,
+					TotalAmount: stats.TotalAmount + order.Amount,
+				}
+			},
+			func(stats *UserStats) (string, []string) {
+				return stats.UserID, []string{
+					stats.UserID,
+					fmt.Sprintf("%d", stats.OrderCount),
+					fmt.Sprintf("%d", stats.TotalAmount),
+				}
+			},
+			setter,
+		).
+		TopicProducer(statsOut)
 
 	running := s.Start()
 	defer running.Stop()
@@ -289,13 +264,13 @@ func example4ComplexWorkflow() {
 	orderUpdater, _ := caravan.NewTableUpdater(
 		ordersTable,
 		func(o *Order) string { return o.ID },
-		table.MakeColumn("id",
+		table.NewColumn("id",
 			func(o *Order) string { return o.ID },
 		),
-		table.MakeColumn("user_id",
+		table.NewColumn("user_id",
 			func(o *Order) string { return o.UserID },
 		),
-		table.MakeColumn("amount",
+		table.NewColumn("amount",
 			func(o *Order) string { return fmt.Sprintf("%d", o.Amount) },
 		),
 	)
@@ -311,36 +286,20 @@ func example4ComplexWorkflow() {
 	// 4. Flatten batches back to individual orders
 	// 5. Scan to aggregate totals by user
 	// 6. Update stats table
-	s := caravan.NewStream(
-		node.Bind(
-			node.Bind(
-				node.Bind(
-					node.Bind(
-						node.Bind(
-							node.TopicConsumer(ordersIn),
-							node.DistinctBy(
-								func(o *Order) string { return o.ID },
-							),
-						),
-						node.Buffer[*Order](5, 200*time.Millisecond),
-					),
-					node.TableBatchUpdate(orderUpdater),
-				),
-				node.FlatMap(func(batch []*Order) []*Order { return batch }),
-			),
-			node.Scan(
-				func(totals map[string]int, o *Order) map[string]int {
-					totals[o.UserID] += o.Amount
-					// Update stats table
-					statsSetter(
-						o.UserID, o.UserID, fmt.Sprintf("%d", totals[o.UserID]),
-					)
-					return totals
-				},
-			),
-		),
-		node.TopicProducer(statsOut),
-	)
+	s := caravan.TopicConsumer(ordersIn).
+		DistinctBy(func(o *Order) string { return o.ID }).
+		Buffer(5, 200*time.Millisecond).
+		TableBatchUpdate(orderUpdater).
+		FlatMap(func(batch []*Order) []*Order { return batch }).
+		Scan(func(totals map[string]int, o *Order) map[string]int {
+			totals[o.UserID] += o.Amount
+			// Update stats table
+			statsSetter(
+				o.UserID, o.UserID, fmt.Sprintf("%d", totals[o.UserID]),
+			)
+			return totals
+		}).
+		TopicProducer(statsOut)
 
 	running := s.Start()
 	defer running.Stop()
@@ -351,7 +310,8 @@ func example4ComplexWorkflow() {
 		defer p.Close()
 		orders := []*Order{
 			{ID: "order-1", UserID: "alice", Amount: 100, Status: "pending"},
-			{ID: "order-1", UserID: "alice", Amount: 100, Status: "pending"}, // duplicate
+			// duplicate
+			{ID: "order-1", UserID: "alice", Amount: 100, Status: "pending"},
 			{ID: "order-2", UserID: "bob", Amount: 200, Status: "pending"},
 			{ID: "order-3", UserID: "alice", Amount: 150, Status: "pending"},
 			{ID: "order-2", UserID: "bob", Amount: 200, Status: "pending"}, // duplicate

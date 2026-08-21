@@ -6,10 +6,12 @@ import (
 )
 
 type (
+	// Advice reports processor state to a Stream monitor
 	Advice interface {
 		advice()
 	}
 
+	// Context carries lifecycle and message channels through a Processor
 	Context[In, Out any] struct {
 		Done    <-chan Done
 		Monitor chan<- Advice
@@ -17,51 +19,61 @@ type (
 		Out     chan<- Out
 	}
 
+	// Done signals that Stream processing has stopped
 	Done struct{}
 
 	// Supported Monitor Advice
 
-	// Stop is Advice that instructs the Stream to completely stop operating.
-	// This should only be used in exceptional cases.
+	// Stop instructs the Stream to completely stop operating
 	Stop struct{}
 
+	// Debug reports diagnostic context from a Processor
 	Debug struct {
 		Message string
 		Stack   []byte
 	}
 
-	// Error is Advice that reports a recoverable error to the Stream.
+	// Error reports a recoverable error to the Stream
 	Error struct{ error }
 
-	// Fatal is Advice that reports a non-recoverable error to the Stream. The
-	// Stream will be stopped when encountering such an error.
+	// Fatal reports an error that stops the Stream
 	Fatal struct{ error }
 )
 
-func Make[In, Out any](
+// New returns a processor Context over the provided channels
+func New[In, Out any](
 	done <-chan Done, monitor chan<- Advice, in <-chan In, out chan<- Out,
 ) *Context[In, Out] {
-	return &Context[In, Out]{done, monitor, in, out}
+	return &Context[In, Out]{
+		Done:    done,
+		Monitor: monitor,
+		In:      in,
+		Out:     out,
+	}
 }
 
+// With returns a Context with replacement input and output channels
 func With[OldIn, OldOut, In, Out any](
 	c *Context[OldIn, OldOut], in chan In, out chan Out,
 ) *Context[In, Out] {
-	return Make(c.Done, c.Monitor, in, out)
+	return New(c.Done, c.Monitor, in, out)
 }
 
+// WithIn returns a Context with a replacement input channel
 func WithIn[OldIn, Out, In any](
 	c *Context[OldIn, Out], in chan In,
 ) *Context[In, Out] {
-	return Make(c.Done, c.Monitor, in, c.Out)
+	return New(c.Done, c.Monitor, in, c.Out)
 }
 
+// WithOut returns a Context with a replacement output channel
 func WithOut[In, OldOut, Out any](
 	c *Context[In, OldOut], out chan Out,
 ) *Context[In, Out] {
-	return Make(c.Done, c.Monitor, c.In, out)
+	return New(c.Done, c.Monitor, c.In, out)
 }
 
+// IsDone returns whether Stream processing has stopped
 func (c *Context[In, Out]) IsDone() bool {
 	select {
 	case <-c.Done:
@@ -71,6 +83,7 @@ func (c *Context[In, Out]) IsDone() bool {
 	}
 }
 
+// FetchMessage waits for the next input or for processing to stop
 func (c *Context[In, Out]) FetchMessage() (In, bool) {
 	select {
 	case <-c.Done:
@@ -81,6 +94,7 @@ func (c *Context[In, Out]) FetchMessage() (In, bool) {
 	}
 }
 
+// ForwardResult sends a result unless processing has stopped
 func (c *Context[In, Out]) ForwardResult(res Out) bool {
 	select {
 	case <-c.Done:
@@ -90,6 +104,7 @@ func (c *Context[In, Out]) ForwardResult(res Out) bool {
 	}
 }
 
+// Advise reports Advice unless processing has stopped
 func (c *Context[In, Out]) Advise(a Advice) bool {
 	select {
 	case <-c.Done:
@@ -99,6 +114,7 @@ func (c *Context[In, Out]) Advise(a Advice) bool {
 	}
 }
 
+// Debugf reports formatted diagnostic context
 func (c *Context[_, _]) Debugf(format string, v ...any) bool {
 	return c.Advise(&Debug{
 		Message: fmt.Sprintf(format, v...),
@@ -106,18 +122,22 @@ func (c *Context[_, _]) Debugf(format string, v ...any) bool {
 	})
 }
 
+// Errorf reports a formatted recoverable error
 func (c *Context[_, _]) Errorf(format string, v ...any) bool {
 	return c.Error(fmt.Errorf(format, v...))
 }
 
+// Error reports a recoverable error
 func (c *Context[_, _]) Error(err error) bool {
 	return c.Advise(&Error{err})
 }
 
+// Fatalf reports a formatted error that stops the Stream
 func (c *Context[_, _]) Fatalf(format string, v ...any) bool {
 	return c.Fatal(fmt.Errorf(format, v...))
 }
 
+// Fatal reports an error that stops the Stream
 func (c *Context[_, _]) Fatal(err error) bool {
 	return c.Advise(&Fatal{err})
 }

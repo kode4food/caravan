@@ -1,6 +1,7 @@
 package table
 
 type (
+	// Updater selects a key and Columns from a message and updates a Table
 	Updater[Msg any, Key comparable, Value any] interface {
 		// Key returns the key selector for this Table. This selector can be
 		// used to retrieve the Key from a message for this Updater independent

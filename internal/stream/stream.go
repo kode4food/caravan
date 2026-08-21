@@ -6,67 +6,78 @@ import (
 
 	"github.com/kode4food/caravan/stream"
 	"github.com/kode4food/caravan/stream/context"
-	"github.com/kode4food/caravan/stream/node"
 )
 
 type (
-	// Stream is the internal implementation of a stream.Stream
-	Stream[In, Out any] struct {
+	definition[Out any] struct {
 		root stream.Processor[stream.Source, Out]
 	}
 
-	// Running is the internal implementation of a stream.Running
-	Running[In, Out any] struct {
-		*Stream[In, Out]
+	running[Out any] struct {
+		*definition[Out]
 		monitor chan context.Advice
 		done    chan context.Done
 		mu      sync.Mutex
 	}
 )
 
-// Make builds a Stream. The Stream must be started using the Start method
-func Make[In, Out any](
-	source stream.Processor[stream.Source, In], rest stream.Processor[In, Out],
-) stream.Stream {
-	return &Stream[In, Out]{
-		root: node.Bind(source, rest),
+// New returns a Stream that has not been started
+func New[Out any](root stream.Processor[stream.Source, Out]) stream.Stream {
+	return &definition[Out]{root: root}
+}
+
+// Bind joins two Processors while keeping composition out of the public API
+func Bind[In, Bound, Out any](
+	left stream.Processor[In, Bound], right stream.Processor[Bound, Out],
+) stream.Processor[In, Out] {
+	return func(c *context.Context[In, Out]) {
+		handoff := make(chan Bound)
+		left.Start(context.WithOut(c, handoff))
+		right.Start(context.WithIn(c, handoff))
 	}
 }
 
 // Start kicks off the background routine for this stream
-func (s *Stream[_, _]) Start() stream.Running {
-	r := s.start()
+func (d *definition[_]) Start() stream.Running {
+	r := d.start()
 	r.startMonitoringWith(r.handleAdvice)
 	return r
 }
 
-func (s *Stream[_, _]) StartWith(h stream.AdviceHandler) stream.Running {
-	r := s.start()
+// StartWith starts the Stream using an Advice handler
+func (d *definition[_]) StartWith(h stream.AdviceHandler) stream.Running {
+	r := d.start()
 	r.startMonitoringWith(h)
 	return r
 }
 
-func (s *Stream[In, Out]) start() *Running[In, Out] {
-	r := &Running[In, Out]{
-		Stream:  s,
-		monitor: make(chan context.Advice),
-		done:    make(chan context.Done),
+func (d *definition[Out]) start() *running[Out] {
+	r := &running[Out]{
+		definition: d,
+		monitor:    make(chan context.Advice),
+		done:       make(chan context.Done),
 	}
 	r.startStream()
 	return r
 }
 
-func (r *Running[_, Out]) startStream() {
+func (r *running[Out]) startStream() {
 	go func() {
 		in := make(chan stream.Source)
 		out := make(chan stream.Sink)
 
-		loop := node.Bind(
+		loop := Bind(
 			r.root,
-			node.Sink[Out](),
+			func(c *context.Context[Out, stream.Sink]) {
+				for {
+					if _, ok := c.FetchMessage(); !ok {
+						return
+					}
+				}
+			},
 		)
 
-		loop.Start(context.Make(r.done, r.monitor, in, out))
+		loop.Start(context.New(r.done, r.monitor, in, out))
 
 		for {
 			select {
@@ -78,7 +89,7 @@ func (r *Running[_, Out]) startStream() {
 	}()
 }
 
-func (r *Running[_, _]) startMonitoringWith(handle stream.AdviceHandler) {
+func (r *running[_]) startMonitoringWith(handle stream.AdviceHandler) {
 	go func() {
 		for {
 			select {
@@ -93,7 +104,7 @@ func (r *Running[_, _]) startMonitoringWith(handle stream.AdviceHandler) {
 	}()
 }
 
-func (r *Running[_, _]) handleAdvice(a context.Advice, _ func()) {
+func (r *running[_]) handleAdvice(a context.Advice, _ func()) {
 	switch e := a.(type) {
 	case *context.Error:
 		log.Print(e.Error())
@@ -106,13 +117,13 @@ func (r *Running[_, _]) handleAdvice(a context.Advice, _ func()) {
 }
 
 // IsRunning returns whether the stream is actively running
-func (r *Running[_, _]) IsRunning() bool {
+func (r *running[_]) IsRunning() bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.isRunning()
 }
 
-func (r *Running[_, _]) isRunning() bool {
+func (r *running[_]) isRunning() bool {
 	select {
 	case <-r.done:
 		return false
@@ -122,17 +133,13 @@ func (r *Running[_, _]) isRunning() bool {
 }
 
 // Stop the stream if it's running
-func (r *Running[_, _]) Stop() error {
+func (r *running[_]) Stop() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if !r.isRunning() {
 		return stream.ErrAlreadyStopped
 	}
-	r.stop()
-	return nil
-}
-
-func (r *Running[_, _]) stop() {
 	close(r.done)
+	return nil
 }

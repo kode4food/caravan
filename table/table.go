@@ -3,17 +3,17 @@ package table
 import "errors"
 
 type (
-	// Table is an interface that associates a Key with multiple named Columns.
+	// Table associates a Key with multiple named Columns
 	// The Key and Columns are selected using an Updater. Multiple Updaters are
 	// able to act on a single Table
 	Table[Key comparable, Value any] interface {
 		// Columns will return the Column names defined for this Table
 		Columns() []ColumnName
 
-		// Getter creates a Getter based on the specified ColumnNames.
+		// Getter creates a Getter for the specified ColumnNames
 		Getter(...ColumnName) (Getter[Key, Value], error)
 
-		// Setter creates a Setter based on the specified ColumnNames.
+		// Setter creates a Setter for the specified ColumnNames
 		Setter(...ColumnName) (Setter[Key, Value], error)
 
 		// Delete removes a row from the table by key
@@ -25,8 +25,7 @@ type (
 		// Count returns the number of rows in the table
 		Count() int
 
-		// Range iterates over all rows in the table, calling fn for each row.
-		// If fn returns false, iteration stops.
+		// Range visits rows until fn returns false
 		Range(fn func(Key, []Value) bool)
 	}
 
@@ -43,9 +42,14 @@ type (
 )
 
 var (
-	ErrKeyNotFound         = errors.New("key not found in table")
-	ErrColumnNotFound      = errors.New("column not found in table")
+	// ErrKeyNotFound indicates a missing Table key
+	ErrKeyNotFound = errors.New("key not found in table")
+	// ErrColumnNotFound indicates a missing Table Column
+	ErrColumnNotFound = errors.New("column not found in table")
+	// ErrDuplicateColumnName indicates repeated Column names
 	ErrDuplicateColumnName = errors.New("column name duplicated")
-	ErrValueCountRequired  = errors.New("value count mismatch")
-	ErrKeyNotFoundDelete   = errors.New("key not found for delete")
+	// ErrValueCountRequired indicates an incorrect row value count
+	ErrValueCountRequired = errors.New("value count mismatch")
+	// ErrKeyNotFoundDelete indicates deletion of a missing key
+	ErrKeyNotFoundDelete = errors.New("key not found for delete")
 )

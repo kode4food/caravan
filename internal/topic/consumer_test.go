@@ -170,7 +170,7 @@ func TestConsumerClosedDuringPoll(t *testing.T) {
 		p.Send() <- 1
 	}()
 
-	e, ok := message.Poll[any](c, time.Second)
+	e, ok := message.Poll(c, time.Second)
 	as.Nil(e)
 	as.False(ok)
 }

@@ -20,6 +20,8 @@ _This is a work in progress. The basics are there, but not yet ready for product
 
 ## Installation
 
+Caravan requires Go 1.27 or later.
+
 ```bash
 go get github.com/kode4food/caravan
 ```
@@ -52,10 +54,7 @@ msg := <-consumer.Receive()
 Build composable stream processing pipelines:
 
 ```go
-import (
-    "github.com/kode4food/caravan"
-    "github.com/kode4food/caravan/stream/node"
-)
+import "github.com/kode4food/caravan"
 
 type Order struct {
     ID     string
@@ -67,20 +66,14 @@ ordersIn := caravan.NewTopic[*Order]()
 totalsOut := caravan.NewTopic[int]()
 
 // Build a stream pipeline
-stream := caravan.NewStream(
-    node.Bind(
-        node.Bind(
-            node.TopicConsumer(ordersIn),
-            node.Filter(func(o *Order) bool {
-                return o.Amount > 100
-            }),
-        ),
-        node.Map(func(o *Order) int {
-            return o.Amount
-        }),
-    ),
-    node.TopicProducer(totalsOut),
-)
+stream := caravan.TopicConsumer(ordersIn).
+    Filter(func(o *Order) bool {
+        return o.Amount > 100
+    }).
+    Map(func(o *Order) int {
+        return o.Amount
+    }).
+    TopicProducer(totalsOut)
 
 // Start processing
 running := stream.Start()
@@ -94,7 +87,7 @@ Efficient key-value storage with column-based operations:
 ```go
 import (
     "github.com/kode4food/caravan"
-    "github.com/kode4food/caravan/table/column"
+    "github.com/kode4food/caravan/table"
 )
 
 type User struct {
@@ -112,22 +105,18 @@ usersTable, _ := caravan.NewTable[string, string](
 updater, _ := caravan.NewTableUpdater(
     usersTable,
     func(u *User) string { return u.ID },
-    table.MakeColumn("id", func(u *User) string { return u.ID }),
-    table.MakeColumn("name", func(u *User) string { return u.Name }),
-    table.MakeColumn("email", func(u *User) string { return u.Email }),
+    table.NewColumn("id", func(u *User) string { return u.ID }),
+    table.NewColumn("name", func(u *User) string { return u.Name }),
+    table.NewColumn("email", func(u *User) string { return u.Email }),
 )
 
 // Update the table from a stream
 usersIn := caravan.NewTopic[*User]()
 usersOut := caravan.NewTopic[*User]()
 
-stream := caravan.NewStream(
-    node.Bind(
-        node.TopicConsumer(usersIn),
-        node.TableUpdater(updater),
-    ),
-    node.TopicProducer(usersOut),
-)
+stream := caravan.TopicConsumer(usersIn).
+    TableUpdate(updater).
+    TopicProducer(usersOut)
 
 running := stream.Start()
 defer running.Stop()
@@ -157,49 +146,65 @@ Caravan provides a rich set of stream operators for building complex pipelines:
 - `Map` - Transform messages one-to-one
 - `FlatMap` - Transform messages one-to-many
 - `Filter` - Filter messages by predicate
-- `Transform` - Generic transformation operator
+- `ForEach` - Perform an action for each message
 
 ### Aggregation
 
 - `Scan` - Stateful accumulation
-- `Aggregate` - Windowed aggregations
+- `ScanFrom` - Stateful accumulation from an initial value
 - `TableAggregate` - Aggregate to table storage
 - `Reduce` - Reduce to single value
+- `ReduceFrom` - Reduce from an initial value
 
 ### Grouping & Windowing
 
 - `GroupBy` - Partition by key
 - `Window` - Time-based windowing
+- `SlidingWindow` - Fixed-size sliding windowing
 - `Buffer` - Batch messages by count or time
 
 ### Table Integration
 
 - `TableUpdate` - Update table from stream
 - `TableBatchUpdate` - Batch update table
+- `TableLookup` - Single-key table lookups
 - `TableScan` - Multi-key table lookups
 - `TableAggregate` - Aggregate into table
+- `TableFilter` - Filter by table membership
+- `TableJoin` - Join messages with table rows
+- `TableDelete` - Delete rows from a stream
+- `TableWatch` - Stream table changes
 
 ### Flow Control
 
-- `Limit` - Limit message count
+- `Take` / `TakeWhile` - Limit message count
+- `Skip` / `SkipWhile` - Skip messages
+- `Distinct` - Remove consecutive duplicates
 - `DistinctBy` - Remove duplicates
 - `Retry` - Retry failed operations
 - `Debounce` - Rate limiting
 - `Throttle` - Throttle message rate
+- `Delay` - Delay messages
+- `Sample` - Sample messages periodically
 
 ### Utilities
 
-- `ForEach` - Side effects
-- `Split` - Split stream by predicate
-- `Combine` - Merge multiple streams
+- `Split` - Send messages through multiple branches
+- `Merge` - Merge multiple streams
+- `Zip` / `ZipWith` - Combine paired messages
+- `CombineLatest` - Combine the latest messages
+- `Join` - Combine matching paired messages
 - `Generate` - Generate messages
+- `GenerateFrom` - Generate messages from a channel
+- `SidechainTo` - Copy messages to a channel
+- `SinkInto` - End a stream at a channel
 
 ## Advanced Examples
 
 ### Real-time Aggregation with Tables
 
 ```go
-// Aggregate order totals by user in real-time
+// Aggregate order totals in real-time
 statsTable, _ := caravan.NewTable[string, string](
     "user_id", "order_count", "total_amount",
 )
@@ -208,35 +213,26 @@ setter, _ := statsTable.Setter("user_id", "order_count", "total_amount")
 ordersIn := caravan.NewTopic[*Order]()
 statsOut := caravan.NewTopic[*UserStats]()
 
-stream := caravan.NewStream(
-    node.Bind(
-        node.Bind(
-            node.TopicConsumer(ordersIn),
-            node.GroupBy(func(o *Order) string {
-                return o.UserID
-            }),
-        ),
-        node.TableAggregate(
-            &UserStats{OrderCount: 0, TotalAmount: 0},
-            func(stats *UserStats, order *Order) *UserStats {
-                return &UserStats{
-                    UserID:      order.UserID,
-                    OrderCount:  stats.OrderCount + 1,
-                    TotalAmount: stats.TotalAmount + order.Amount,
-                }
-            },
-            func(stats *UserStats) (string, []string) {
-                return stats.UserID, []string{
-                    stats.UserID,
-                    fmt.Sprintf("%d", stats.OrderCount),
-                    fmt.Sprintf("%d", stats.TotalAmount),
-                }
-            },
-            setter,
-        ),
-    ),
-    node.TopicProducer(statsOut),
-)
+stream := caravan.TopicConsumer(ordersIn).
+    TableAggregate(
+        &UserStats{OrderCount: 0, TotalAmount: 0},
+        func(stats *UserStats, order *Order) *UserStats {
+            return &UserStats{
+                UserID:      order.UserID,
+                OrderCount:  stats.OrderCount + 1,
+                TotalAmount: stats.TotalAmount + order.Amount,
+            }
+        },
+        func(stats *UserStats) (string, []string) {
+            return stats.UserID, []string{
+                stats.UserID,
+                fmt.Sprintf("%d", stats.OrderCount),
+                fmt.Sprintf("%d", stats.TotalAmount),
+            }
+        },
+        setter,
+    ).
+    TopicProducer(statsOut)
 ```
 
 ### Batch Processing for High Throughput
@@ -246,48 +242,30 @@ stream := caravan.NewStream(
 ordersIn := caravan.NewTopic[*Order]()
 batchesOut := caravan.NewTopic[[]*Order]()
 
-stream := caravan.NewStream(
-    node.Bind(
-        node.Bind(
-            node.TopicConsumer(ordersIn),
-            node.Buffer[*Order](100, 1*time.Second), // 100 messages or 1 second
-        ),
-        node.TableBatchUpdate(orderUpdater),
-    ),
-    node.TopicProducer(batchesOut),
-)
+stream := caravan.TopicConsumer(ordersIn).
+    Buffer(100, 1*time.Second).
+    TableBatchUpdate(orderUpdater).
+    TopicProducer(batchesOut)
 ```
 
 ### Complex Multi-stage Pipeline
 
 ```go
 // Deduplicate -> Batch -> Update -> Aggregate
-stream := caravan.NewStream(
-    node.Bind(
-        node.Bind(
-            node.Bind(
-                node.Bind(
-                    node.TopicConsumer(ordersIn),
-                    node.DistinctBy(func(o *Order) string {
-                        return o.ID
-                    }),
-                ),
-                node.Buffer[*Order](10, 500*time.Millisecond),
-            ),
-            node.TableBatchUpdate(orderUpdater),
-        ),
-        node.FlatMap(func(batch []*Order) []*Order {
-            return batch
-        }),
-    ),
-    node.Scan(
-        func(totals map[string]int, o *Order) map[string]int {
-            totals[o.UserID] += o.Amount
-            return totals
-        },
-    ),
-    node.TopicProducer(statsOut),
-)
+stream := caravan.TopicConsumer(ordersIn).
+    DistinctBy(func(o *Order) string {
+        return o.ID
+    }).
+    Buffer(10, 500*time.Millisecond).
+    TableBatchUpdate(orderUpdater).
+	FlatMap(func(batch []*Order) []*Order {
+		return batch
+	}).
+    Scan(func(totals map[string]int, o *Order) map[string]int {
+        totals[o.UserID] += o.Amount
+        return totals
+    }).
+    TopicProducer(statsOut)
 ```
 
 ## Error Handling
@@ -295,8 +273,6 @@ stream := caravan.NewStream(
 Streams provide flexible error handling through the advice system:
 
 ```go
-stream := caravan.NewStream(/* ... */)
-
 running := stream.StartWith(func(advice context.Advice, next func()) {
     switch a := advice.(type) {
     case *context.Error:

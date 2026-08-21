@@ -1,33 +1,27 @@
 package table
 
-type (
-	// Column describes a column, including its name and a ValueSelector for
-	// retrieving the column's value from a message
-	Column[Msg, Value any] interface {
-		Name() ColumnName
-		Select(Msg) Value
-	}
+// Column describes a named value selector
+type Column[Msg, Value any] struct {
+	value ValueSelector[Msg, Value]
+	name  ColumnName
+}
 
-	column[Msg, Value any] struct {
-		value ValueSelector[Msg, Value]
-		name  ColumnName
-	}
-)
-
-// MakeColumn instantiates a new Column instance
-func MakeColumn[Msg, Value any](
+// NewColumn returns a named value selector
+func NewColumn[Msg, Value any](
 	n ColumnName, v ValueSelector[Msg, Value],
 ) Column[Msg, Value] {
-	return &column[Msg, Value]{
+	return Column[Msg, Value]{
 		name:  n,
 		value: v,
 	}
 }
 
-func (c *column[_, _]) Name() ColumnName {
+// Name returns the Column name
+func (c Column[_, _]) Name() ColumnName {
 	return c.name
 }
 
-func (c *column[Msg, Value]) Select(m Msg) Value {
+// Select returns the Column value selected from a message
+func (c Column[Msg, Value]) Select(m Msg) Value {
 	return c.value(m)
 }

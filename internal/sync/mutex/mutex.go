@@ -5,65 +5,63 @@ import (
 	"sync/atomic"
 )
 
-// InitialMutex is a mutex that can eventually be bypassed. Good for structures
-// that are initially mutable, but thereafter read-only.
+// InitialMutex is a mutex that can be bypassed after mutation finishes
 type InitialMutex struct {
 	mu    sync.Mutex
-	state int32
+	state atomic.Int32
 }
 
-// Status constants
 const (
-	Disabled int32 = iota - 1
-	Unlocked
-	Locked
+	disabled int32 = iota - 1
+	unlocked
+	locked
 )
 
 // DisableLock instructs the InitialMutex to ignore all subsequent calls to
 // Lock and Unlock
 func (m *InitialMutex) DisableLock() {
-	switch atomic.LoadInt32(&m.state) {
-	case Disabled:
+	switch m.state.Load() {
+	case disabled:
 		return
-	case Locked:
-		atomic.StoreInt32(&m.state, Disabled)
+	case locked:
+		m.state.Store(disabled)
 		m.mu.Unlock()
-	case Unlocked:
+	case unlocked:
 		m.mu.Lock()
-		atomic.StoreInt32(&m.state, Disabled)
+		m.state.Store(disabled)
 		m.mu.Unlock()
 	}
 }
 
 // IsLockDisabled returns whether locking has been disabled
 func (m *InitialMutex) IsLockDisabled() bool {
-	return atomic.LoadInt32(&m.state) == Disabled
+	return m.state.Load() == disabled
 }
 
 // Lock potentially locks this InitialMutex, if enabled
 func (m *InitialMutex) Lock() {
-	if atomic.LoadInt32(&m.state) == Disabled {
+	if m.state.Load() == disabled {
 		return
 	}
 	m.mu.Lock()
-	if atomic.LoadInt32(&m.state) == Disabled {
+	if m.state.Load() == disabled {
 		m.mu.Unlock()
 		return
 	}
-	atomic.StoreInt32(&m.state, Locked)
+	m.state.Store(locked)
 }
 
 // Unlock potentially unlocks this InitialMutex, if enabled
 func (m *InitialMutex) Unlock() {
-	if atomic.LoadInt32(&m.state) == Locked {
-		atomic.StoreInt32(&m.state, Unlocked)
+	if m.state.Load() == locked {
+		m.state.Store(unlocked)
 		m.mu.Unlock()
 	}
 }
 
 // Reset places the InitialMutex back in its initial unlocked, enabled state
 func (m *InitialMutex) Reset() {
-	if atomic.LoadInt32(&m.state) == Disabled {
-		atomic.StoreInt32(&m.state, Unlocked)
+	if m.state.Load() == disabled {
+		m.state.Store(unlocked)
 	}
 }

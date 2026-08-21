@@ -20,6 +20,7 @@ type (
 )
 
 var (
+	// ErrSenderClosed indicates a closed Sender
 	ErrSenderClosed = errors.New("sender closed")
 )
 

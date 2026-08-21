@@ -16,7 +16,7 @@ func TestOpenContext(t *testing.T) {
 	in := make(chan any)
 	out := make(chan any)
 
-	c := context.Make(done, monitor, in, out)
+	c := context.New(done, monitor, in, out)
 	as.NotNil(c)
 	as.False(c.IsDone())
 
@@ -47,11 +47,10 @@ func TestClosedContext(t *testing.T) {
 	in := make(chan any)
 	out := make(chan any)
 
-	c := context.Make(done, make(chan context.Advice), in, out)
+	c := context.New(done, make(chan context.Advice), in, out)
 	as.NotNil(c)
 	as.True(c.IsDone())
 
-	go func() { in <- "hello" }()
 	msg, ok := c.FetchMessage()
 	as.False(ok)
 	as.Equal(nil, msg)
@@ -68,7 +67,7 @@ func TestContextWith(t *testing.T) {
 
 	done := make(chan context.Done)
 
-	c1 := context.Make[any, any](done, make(chan context.Advice), nil, nil)
+	c1 := context.New[any, any](done, make(chan context.Advice), nil, nil)
 	as.Nil(c1.In)
 	as.Nil(c1.Out)
 
@@ -95,7 +94,7 @@ func TestMonitorMessages(t *testing.T) {
 
 	done := make(chan context.Done)
 	monitor := make(chan context.Advice)
-	c1 := context.Make[any, any](done, monitor, nil, nil)
+	c1 := context.New[any, any](done, monitor, nil, nil)
 
 	go func() {
 		c1.Advise(context.Stop{})

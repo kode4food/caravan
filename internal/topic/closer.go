@@ -2,19 +2,20 @@ package topic
 
 import "github.com/kode4food/caravan/closer"
 
-type Closer struct {
+type topicCloser struct {
 	channel chan struct{}
 	close   func()
 }
 
-func makeCloser(close func()) closer.Closer {
-	return &Closer{
+func newCloser(close func()) closer.Closer {
+	return &topicCloser{
 		channel: make(chan struct{}),
 		close:   close,
 	}
 }
 
-func (c *Closer) Close() {
+// Close releases the Topic resource
+func (c *topicCloser) Close() {
 	select {
 	case <-c.channel:
 		return
@@ -26,6 +27,7 @@ func (c *Closer) Close() {
 	}
 }
 
-func (c *Closer) IsClosed() <-chan struct{} {
+// IsClosed returns a channel closed with the resource
+func (c *topicCloser) IsClosed() <-chan struct{} {
 	return c.channel
 }

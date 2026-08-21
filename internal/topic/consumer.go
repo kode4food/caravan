@@ -4,21 +4,19 @@ import (
 	"errors"
 	"log/slog"
 	"runtime"
-
-	"github.com/google/uuid"
 )
 
 type consumer[Msg any] struct {
 	*cursor[Msg]
 	channel chan Msg
-	id      uuid.UUID
+	id      uint64
 }
 
 var (
-	ErrConsumerNotClosed = errors.New("consumer not closed")
+	errConsumerNotClosed = errors.New("consumer not closed")
 )
 
-func makeConsumer[Msg any](c *cursor[Msg]) *consumer[Msg] {
+func newConsumer[Msg any](c *cursor[Msg]) *consumer[Msg] {
 	res := &consumer[Msg]{
 		cursor:  c,
 		id:      c.id,
@@ -28,6 +26,7 @@ func makeConsumer[Msg any](c *cursor[Msg]) *consumer[Msg] {
 	return res
 }
 
+// Receive returns the Consumer's message channel
 func (c *consumer[Msg]) Receive() <-chan Msg {
 	return c.channel
 }
@@ -49,7 +48,7 @@ func startConsumer[Msg any](c *cursor[Msg]) chan Msg {
 					case <-c.IsClosed():
 						goto closed
 					case ch <- e:
-						c.advance()
+						c.offset.Add(1)
 					}
 				} else {
 					// Wait for something to happen
@@ -71,7 +70,7 @@ func consumerDebugFinalizer[Msg any](c *consumer[Msg]) {
 	select {
 	case <-c.IsClosed():
 	default:
-		slog.Debug(ErrConsumerNotClosed.Error(),
-			slog.String("consumer_id", c.id.String()))
+		slog.Debug(errConsumerNotClosed.Error(),
+			slog.Uint64("consumer_id", c.id))
 	}
 }

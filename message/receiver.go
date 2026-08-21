@@ -21,6 +21,7 @@ type (
 )
 
 var (
+	// ErrReceiverClosed indicates a closed Receiver
 	ErrReceiverClosed = errors.New("receiver closed")
 )
 
@@ -36,16 +37,9 @@ func Poll[Msg any](r Receiver[Msg], d time.Duration) (Msg, bool) {
 	}
 }
 
-// Receive returns the next message, blocking indefinitely, and advancing the
-// Receiver's Cursor upon completion
-func Receive[Msg any](r Receiver[Msg]) (Msg, bool) {
-	m, ok := <-r.Receive()
-	return m, ok
-}
-
 // MustReceive will receive from a Receiver or panic if it is closed
 func MustReceive[Msg any](r Receiver[Msg]) Msg {
-	if m, ok := Receive(r); ok {
+	if m, ok := <-r.Receive(); ok {
 		return m
 	}
 	panic(ErrReceiverClosed)

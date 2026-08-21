@@ -17,11 +17,11 @@ func TestPoll(t *testing.T) {
 	message.Send(p, "hello")
 
 	c := top.NewConsumer()
-	e, ok := message.Poll(c, time.Millisecond)
+	e, ok := message.Poll(c, time.Second)
 	as.Equal("hello", e)
 	as.True(ok)
 
-	e, ok = message.Poll[any](c, time.Millisecond)
+	e, ok = message.Poll(c, time.Millisecond)
 	as.Nil(e)
 	as.False(ok)
 	c.Close()

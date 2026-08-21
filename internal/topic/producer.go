@@ -5,29 +5,27 @@ import (
 	"log/slog"
 	"runtime"
 
-	"github.com/google/uuid"
-
 	"github.com/kode4food/caravan/closer"
 )
 
 type producer[Msg any] struct {
 	closer.Closer
-	topic   *Topic[Msg]
+	topic   *topicState[Msg]
 	channel chan Msg
-	id      uuid.UUID
+	id      uint64
 }
 
 var (
-	ErrProducerNotClosed = errors.New("producer not closed")
+	errProducerNotClosed = errors.New("producer not closed")
 )
 
-func makeProducer[Msg any](t *Topic[Msg]) *producer[Msg] {
+func newProducer[Msg any](t *topicState[Msg]) *producer[Msg] {
 	ch := startProducer(t)
 	res := &producer[Msg]{
-		id:      uuid.New(),
+		id:      t.nextID.Add(1),
 		topic:   t,
 		channel: ch,
-		Closer: makeCloser(func() {
+		Closer: newCloser(func() {
 			close(ch)
 		}),
 	}
@@ -35,11 +33,12 @@ func makeProducer[Msg any](t *Topic[Msg]) *producer[Msg] {
 	return res
 }
 
+// Send returns the Producer's message channel
 func (p *producer[Msg]) Send() chan<- Msg {
 	return p.channel
 }
 
-func startProducer[Msg any](t *Topic[Msg]) chan Msg {
+func startProducer[Msg any](t *topicState[Msg]) chan Msg {
 	ch := make(chan Msg)
 	go func() {
 		defer func() {
@@ -57,7 +56,7 @@ func producerDebugFinalizer[Msg any](p *producer[Msg]) {
 	select {
 	case <-p.IsClosed():
 	default:
-		slog.Debug(ErrProducerNotClosed.Error(),
-			slog.String("producer_id", p.id.String()))
+		slog.Debug(errProducerNotClosed.Error(),
+			slog.Uint64("producer_id", p.id))
 	}
 }

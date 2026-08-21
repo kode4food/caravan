@@ -22,7 +22,7 @@ func TestProducerClosed(t *testing.T) {
 
 	p.Close()
 	as.True(closer.IsClosed(p))
-	as.False(message.Send[any](p, "blah"))
+	as.False(message.Send(p, "blah"))
 
 	p.Close()
 	as.True(closer.IsClosed(p)) // still closed

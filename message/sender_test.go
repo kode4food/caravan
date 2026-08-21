@@ -13,7 +13,7 @@ func TestMustSend(t *testing.T) {
 	as := assert.New(t)
 	top := caravan.NewTopic[any]()
 	p := top.NewProducer()
-	message.MustSend[any](p, "hello")
+	message.MustSend(p, "hello")
 	p.Close()
 
 	defer func() {
