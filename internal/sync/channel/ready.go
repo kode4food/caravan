@@ -6,8 +6,9 @@ import "sync"
 // readiness notification. The value of a structure like this over a Cond is
 // that a channel can participate in a select
 type ReadyWait struct {
-	ready chan struct{}
-	mu    sync.Mutex
+	ready  chan struct{}
+	mu     sync.Mutex
+	closed bool
 }
 
 const readyWaitCap = 1 // must be non-zero
@@ -24,7 +25,7 @@ func NewReadyWait() *ReadyWait {
 func (r *ReadyWait) Notify() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if len(r.ready) < cap(r.ready) {
+	if !r.closed && len(r.ready) < cap(r.ready) {
 		r.ready <- struct{}{}
 	}
 }
@@ -37,5 +38,8 @@ func (r *ReadyWait) Wait() <-chan struct{} {
 
 // Close closes the underlying ready channel
 func (r *ReadyWait) Close() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.closed = true
 	close(r.ready)
 }
